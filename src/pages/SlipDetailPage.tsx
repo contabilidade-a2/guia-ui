@@ -1,0 +1,259 @@
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { errorMessage, fieldErrors } from '../api/client'
+import { slipsApi } from '../api/endpoints'
+import type { HistoryEntry, SlipDetail } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
+import { ErrorBanner, Field, Loading, SendStatusBadge, SlipStatusBadge } from '../components/ui'
+import { DELETE_SLIP_CONFIRMATION, HISTORY_EVENT_LABELS, ORIGIN_LABELS, formatDate, formatDateTime, formatMonth, formatMoney, todayIso } from '../lib/format'
+
+export function SlipDetailPage() {
+  const slipId = Number(useParams().id)
+  // Keyed by id so moving between slips starts from a clean state.
+  return <SlipDetailView key={slipId} slipId={slipId} />
+}
+
+function SlipDetailView({ slipId }: { slipId: number }) {
+  const { canEditSlips, canRegisterPayment } = useAuth()
+  const navigate = useNavigate()
+
+  const [slip, setSlip] = useState<SlipDetail | null>(null)
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    async function open() {
+      try {
+        const detail = await slipsApi.get(slipId)
+        if (!active) return
+        setSlip(detail)
+        // Recorded once per opening of this screen; the server keeps one per user per day.
+        await slipsApi.registerOpening(slipId)
+        const entries = await slipsApi.history(slipId)
+        if (active) setHistory(entries)
+      } catch (caught) {
+        if (active) setError(errorMessage(caught))
+      }
+    }
+    void open()
+    return () => {
+      active = false
+    }
+  }, [slipId])
+
+  async function onPaymentChanged(updated: SlipDetail) {
+    setSlip(updated)
+    setHistory(await slipsApi.history(slipId))
+  }
+
+  async function deleteSlip() {
+    if (!window.confirm(DELETE_SLIP_CONFIRMATION)) return
+    setError(null)
+    try {
+      await slipsApi.remove(slipId)
+      navigate('/slips', { replace: true })
+    } catch (caught) {
+      setError(errorMessage(caught))
+    }
+  }
+
+  async function removeReceipt() {
+    if (!window.confirm('Remover o comprovante? A guia deixa de constar como paga e a data de pagamento é apagada.')) return
+    setError(null)
+    try {
+      await onPaymentChanged(await slipsApi.removePayment(slipId))
+    } catch (caught) {
+      setError(errorMessage(caught))
+    }
+  }
+
+  if (error && !slip) {
+    return (
+      <>
+        <ErrorBanner message={error} />
+        <Link to="/slips">Voltar para a lista</Link>
+      </>
+    )
+  }
+  if (!slip) return <Loading />
+
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <h1>{slip.subject}</h1>
+          <div className="badges">
+            <SlipStatusBadge status={slip.status} />
+            <SendStatusBadge status={slip.sendStatus} />
+          </div>
+        </div>
+        <div className="header-actions">
+          <Link to="/slips" className="button">
+            Voltar
+          </Link>
+          {canEditSlips && (
+            <>
+              <button type="button" className="button button-danger" onClick={deleteSlip}>
+                Excluir
+              </button>
+              <Link to={`/slips/${slip.id}/edit`} className="button button-primary">
+                Editar
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+      <ErrorBanner message={error} />
+
+      <div className="detail-grid">
+        <section className="card">
+          <h2>Dados da guia</h2>
+          <dl className="details">
+            <dt>Empresa</dt>
+            <dd>{slip.company.label}</dd>
+            <dt>Tipo de guia</dt>
+            <dd>{slip.slipType.name}</dd>
+            <dt>Origem</dt>
+            <dd>{slip.origin ? ORIGIN_LABELS[slip.origin] : '—'}</dd>
+            <dt>Valor</dt>
+            <dd>{formatMoney(slip.amount)}</dd>
+            <dt>Competência</dt>
+            <dd>{formatMonth(slip.competenceDate)}</dd>
+            <dt>Vencimento</dt>
+            <dd>{formatDate(slip.dueDate)}</dd>
+            <dt>Número Cigam</dt>
+            <dd>{slip.cigamNumber ?? '—'}</dd>
+            <dt>Enviada em</dt>
+            <dd>
+              {formatDateTime(slip.sentAt)} por {slip.sentBy}
+            </dd>
+            <dt>PDF da guia</dt>
+            <dd>
+              {slip.fileUrl ? (
+                <a href={slip.fileUrl} target="_blank" rel="noreferrer">
+                  Abrir PDF
+                </a>
+              ) : (
+                <span className="muted">Indisponível: guia cancelada.</span>
+              )}
+            </dd>
+            <dt>Observação</dt>
+            <dd className="preserve-lines">{slip.note ?? '—'}</dd>
+          </dl>
+        </section>
+
+        <div className="detail-side">
+          <section className="card">
+            <h2>Pagamento</h2>
+            {slip.sendStatus === 'CANCELED' ? (
+              <p className="muted">Guia cancelada: pagamento indisponível.</p>
+            ) : slip.receiptUrl && slip.paymentDate ? (
+              <dl className="details">
+                <dt>Pago em</dt>
+                <dd>{formatDate(slip.paymentDate)}</dd>
+                <dt>Comprovante</dt>
+                <dd>
+                  <a href={slip.receiptUrl} target="_blank" rel="noreferrer">
+                    Abrir comprovante
+                  </a>
+                </dd>
+              </dl>
+            ) : (
+              <p className="muted">Nenhum pagamento registrado.</p>
+            )}
+            {canRegisterPayment && slip.sendStatus !== 'CANCELED' && (
+              <div className="payment-actions">
+                {/* keyed so the form starts over when the receipt is added, replaced or removed */}
+                <PaymentForm key={slip.receiptUrl ?? 'none'} slip={slip} onPaid={onPaymentChanged} />
+                {slip.receiptUrl && (
+                  <button type="button" className="button button-small button-danger" onClick={removeReceipt}>
+                    Remover comprovante
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Collapsed by default; the browser handles opening and closing. */}
+          <details className="card history-card">
+            <summary>
+              <h2>Histórico</h2>
+              <span className="muted small">
+                {history.length} {history.length === 1 ? 'evento' : 'eventos'}
+              </span>
+            </summary>
+            <ol className="history">
+              {history.map((entry, index) => (
+                <li key={index}>
+                  <strong>{HISTORY_EVENT_LABELS[entry.eventType]}</strong>
+                  <span className="muted">
+                    {entry.userName} · {formatDateTime(entry.occurredAt)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </details>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function PaymentForm({ slip, onPaid }: { slip: SlipDetail; onPaid: (updated: SlipDetail) => void }) {
+  const alreadyPaid = slip.receiptUrl !== null
+  const [open, setOpen] = useState(!alreadyPaid)
+  const [receiptUrl, setReceiptUrl] = useState('')
+  const [paymentDate, setPaymentDate] = useState(todayIso())
+  const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  if (!open) {
+    return (
+      <button type="button" className="button button-small" onClick={() => setOpen(true)}>
+        Substituir comprovante
+      </button>
+    )
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setSubmitting(true)
+    setError(null)
+    setErrors({})
+    try {
+      onPaid(await slipsApi.registerPayment(slip.id, receiptUrl, paymentDate))
+      setReceiptUrl('')
+      setOpen(false)
+    } catch (caught) {
+      setError(errorMessage(caught))
+      setErrors(fieldErrors(caught))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="form payment-form" onSubmit={submit}>
+      <ErrorBanner message={error} />
+      <Field label="Link do comprovante" error={errors.receiptUrl} hint="Link https do arquivo no OneDrive.">
+        <input type="url" value={receiptUrl} onChange={(e) => setReceiptUrl(e.target.value)} placeholder="https://" required />
+      </Field>
+      <Field label="Data de pagamento" error={errors.paymentDate}>
+        <input type="date" value={paymentDate} max={todayIso()} onChange={(e) => setPaymentDate(e.target.value)} required />
+      </Field>
+      <div className="form-actions">
+        {alreadyPaid && (
+          <button type="button" className="button" onClick={() => setOpen(false)}>
+            Cancelar
+          </button>
+        )}
+        <button type="submit" className="button button-primary" disabled={submitting}>
+          {alreadyPaid ? 'Substituir comprovante' : 'Registrar pagamento'}
+        </button>
+      </div>
+    </form>
+  )
+}
