@@ -160,7 +160,6 @@ export function SlipListPage() {
           />
         </Field>
         <div className="filter-row">
-          <span className="muted small">Datas:</span>
           <DateRangeChips filters={filters} onChange={patchFilters} />
           {hasFilters && (
             <button type="button" className="link-button filter-row-end" onClick={clearFilters}>

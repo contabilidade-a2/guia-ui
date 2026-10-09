@@ -25,6 +25,13 @@
   --paid-strong: #2f7d4f;
   --paid-soft: #e3f3e8;
   --neutral-soft: #efefec;
+  --primary-hover: #0a524c;
+  --control-bg: #ffffff;
+  --placeholder: #8a8a93;
+  --paid-border: #b5dcc2;
+  --hover-bg: #f7faf9;
+  --dot-neutral: #d4d4cf;
+  color-scheme: light;
   --radius: 14px;
   --radius-control: 10px;
 
@@ -33,6 +40,42 @@
   line-height: 1.45;
   color: var(--text);
   background: var(--bg);
+}
+
+/* Dark theme: the same variables with other values; chosen in the user menu (lib/theme.ts). */
+:root[data-theme='dark'] {
+  --bg: #121214;
+  --surface: #1b1b1f;
+  --surface-muted: #232328;
+  --border: #2e2e34;
+  --border-soft: #26262b;
+  --control-border: #3a3a42;
+  --text: #ececef;
+  --text-soft: #c9c9d0;
+  --muted: #a1a1aa;
+  --subtle: #8b8b95;
+  --primary: #1e8479;
+  --primary-dark: #7fd6cb;
+  --primary-text: #6fd0c4;
+  --primary-soft: #14312f;
+  --primary-hover: #249186;
+  --danger: #f2877d;
+  --danger-strong: #e5594c;
+  --danger-soft: #3a1f1d;
+  --danger-border: #5c2d29;
+  --pending: #f0b155;
+  --pending-strong: #e39a1f;
+  --pending-soft: #3a2c10;
+  --paid: #7fcf9c;
+  --paid-strong: #3fa56a;
+  --paid-soft: #16301f;
+  --neutral-soft: #2a2a30;
+  --control-bg: #202026;
+  --placeholder: #7a7a85;
+  --paid-border: #2c5a3d;
+  --hover-bg: #202528;
+  --dot-neutral: #4a4a52;
+  color-scheme: dark;
 }
 
 * {
@@ -349,7 +392,7 @@ a:hover {
 }
 
 .button-primary:hover:not(:disabled) {
-  background: var(--primary-dark);
+  background: var(--primary-hover);
   color: #fff;
 }
 
@@ -443,7 +486,7 @@ textarea {
   padding: 0.45rem 0.75rem;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
-  background: #fff;
+  background: var(--control-bg);
   color: var(--text);
   font: inherit;
 }
@@ -454,7 +497,7 @@ textarea {
 
 input::placeholder,
 textarea::placeholder {
-  color: #8a8a93;
+  color: var(--placeholder);
 }
 
 /* A field locked by the system (e.g. filled in from the installment plan) or by permission. */
@@ -494,7 +537,7 @@ input[type='radio'] {
   gap: 3px;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
-  background: #fff;
+  background: var(--control-bg);
 }
 
 .segmented button {
@@ -699,7 +742,7 @@ input[type='radio'] {
   padding: 0.45rem 0.75rem;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
-  background: #fff;
+  background: var(--control-bg);
   color: var(--text);
   font: inherit;
   text-align: left;
@@ -940,7 +983,7 @@ input[type='radio'] {
 .banner-success {
   background: var(--paid-soft);
   color: var(--paid);
-  border: 1px solid #b5dcc2;
+  border: 1px solid var(--paid-border);
 }
 
 .badge {
@@ -1150,7 +1193,7 @@ tbody tr:last-child td {
 }
 
 button.calendar-cell:hover {
-  background: #f7faf9;
+  background: var(--hover-bg);
 }
 
 .calendar-day-number {
@@ -1469,7 +1512,7 @@ button.calendar-selected:hover {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #d4d4cf;
+  background: var(--dot-neutral);
 }
 
 .history li:last-child::before {
@@ -1597,7 +1640,7 @@ button.calendar-selected:hover {
   min-height: 2.75rem;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
-  background: #fff;
+  background: var(--control-bg);
 }
 
 .range-input input {

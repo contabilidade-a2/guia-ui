@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABELS } from '../lib/format'
+import { currentTheme, saveTheme } from '../lib/theme'
+import type { Theme } from '../lib/theme'
 import { BrandIcon } from './icons'
 
 /** `Maria da Silva` → `MS`: first and last name. */
@@ -54,6 +56,7 @@ export function Layout() {
 /** The user's name; a click opens "Alterar senha" and "Sair", which keeps the top bar on one line. */
 function UserMenu({ name, role, onLogout }: { name: string; role: string; onLogout: () => void }) {
   const [open, setOpen] = useState(false)
+  const [theme, setTheme] = useState<Theme>(currentTheme)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -90,6 +93,17 @@ function UserMenu({ name, role, onLogout }: { name: string; role: string; onLogo
           <NavLink to="/password" onClick={() => setOpen(false)}>
             Alterar senha
           </NavLink>
+          {/* the menu stays open, so the change is seen right away */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = theme === 'dark' ? 'light' : 'dark'
+              saveTheme(next)
+              setTheme(next)
+            }}
+          >
+            {theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+          </button>
           <button type="button" onClick={onLogout}>
             Sair
           </button>
