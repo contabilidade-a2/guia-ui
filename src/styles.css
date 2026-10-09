@@ -1174,12 +1174,12 @@ button.calendar-selected:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5rem;
-  height: 1.5rem;
-  padding: 0 0.4rem;
+  min-width: 0.75rem;
+  height: 0.75rem;
+  padding: 0 0.25rem;
   border-radius: 999px;
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 0.56rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1376,10 +1376,6 @@ button.calendar-selected:hover {
 /* The payment block; outlined in the accent colour while there is a payment to register. */
 .payment-card-open {
   border: 2px solid var(--primary);
-}
-
-.payment-card h2 {
-  margin-bottom: 0.25rem;
 }
 
 .payment-card-intro {

@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { calendarApi } from '../api/endpoints'
 import type { CalendarDay, SlipTypeGroup } from '../api/types'
-import { useAuth } from '../auth/AuthContext'
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '../components/icons'
+import { ChevronLeftIcon, ChevronRightIcon } from '../components/icons'
 import { ErrorBanner, Loading, SlipStatusBadge } from '../components/ui'
 import {
   MONTH_NAMES,
@@ -34,7 +33,6 @@ function slipCount(count: number): string {
 }
 
 export function CalendarPage() {
-  const { canEditSlips } = useAuth()
   const today = todayIso()
   const [year, setYear] = useState(() => Number(today.slice(0, 4)))
   const [month, setMonth] = useState(() => Number(today.slice(5, 7)))
@@ -111,12 +109,6 @@ export function CalendarPage() {
             </button>
           </div>
         </div>
-        {canEditSlips && (
-          <Link to="/slips/new" className="button button-primary">
-            <PlusIcon />
-            Nova guia
-          </Link>
-        )}
       </div>
 
       <ErrorBanner message={days.error} onRetry={days.reload} />

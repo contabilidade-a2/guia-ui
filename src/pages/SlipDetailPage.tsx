@@ -212,8 +212,10 @@ function SlipDetailView({ slipId }: { slipId: number }) {
         </div>
 
         <aside className="detail-side">
-          <section className={paymentOpen ? 'card payment-card payment-card-open' : 'card payment-card'}>
-            <h2>{paymentOpen ? 'Registrar pagamento' : 'Pagamento'}</h2>
+          {/* Same heading-over-card shape as "Dados da guia", so both blocks start at the same height. */}
+          <section>
+            <h2 className="section-title">{paymentOpen ? 'Registrar pagamento' : 'Pagamento'}</h2>
+            <div className={paymentOpen ? 'card payment-card payment-card-open' : 'card payment-card'}>
             {canceled ? (
               <p className="muted">Guia cancelada: pagamento indisponível.</p>
             ) : paid ? (
@@ -243,6 +245,7 @@ function SlipDetailView({ slipId }: { slipId: number }) {
                 )}
               </div>
             )}
+            </div>
           </section>
         </aside>
       </div>
