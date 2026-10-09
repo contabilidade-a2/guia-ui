@@ -41,12 +41,46 @@ export function toIsoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
+/** Whole days from today (in Brazil) to `isoDate`: 1 is tomorrow, -2 was two days ago. */
+export function daysFromToday(isoDate: string): number {
+  const toUtc = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return Date.UTC(year, month - 1, day)
+  }
+  return Math.round((toUtc(isoDate) - toUtc(todayIso())) / 86_400_000)
+}
+
+/** `hoje`, `amanhã`, `em 5 dias`, `ontem`, `há 3 dias`. */
+export function relativeDay(isoDate: string): string {
+  const days = daysFromToday(isoDate)
+  if (days === 0) return 'hoje'
+  if (days === 1) return 'amanhã'
+  if (days === -1) return 'ontem'
+  return days > 0 ? `em ${days} dias` : `há ${-days} dias`
+}
+
+/** Day of the week of a `yyyy-MM-dd` date, without a time zone shift. */
+export function weekdayOf(isoDate: string): number {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return new Date(year, month - 1, day).getDay()
+}
+
+/** `2026-10-09` → `9 de outubro`. */
+export function formatDayMonth(isoDate: string): string {
+  const [, month, day] = isoDate.split('-').map(Number)
+  return `${day} de ${MONTH_NAMES[month - 1].toLowerCase()}`
+}
+
 export const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ]
 
 export const WEEKDAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+export const WEEKDAY_FULL_NAMES = [
+  'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado',
+]
 
 /** Shared by the list and the details screen. */
 export const DELETE_SLIP_CONFIRMATION = 'Você tem certeza que deseja excluir?'

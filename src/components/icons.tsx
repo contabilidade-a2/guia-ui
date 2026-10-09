@@ -63,6 +63,30 @@ export function DeleteIcon() {
   )
 }
 
+export function PlusIcon() {
+  return (
+    <Icon>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  )
+}
+
+export function ChevronLeftIcon() {
+  return (
+    <Icon>
+      <path d="M15 6l-6 6 6 6" />
+    </Icon>
+  )
+}
+
+export function ChevronRightIcon() {
+  return (
+    <Icon>
+      <path d="M9 6l6 6-6 6" />
+    </Icon>
+  )
+}
+
 export function RestoreIcon() {
   return (
     <Icon>
@@ -75,10 +99,10 @@ export function RestoreIcon() {
 /** The application mark shown next to its name. */
 export function BrandIcon() {
   return (
-    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
-      <rect width="32" height="32" rx="7" fill="#fff" />
-      <path d="M10 7h9l4 4v14H10z" fill="#1f5f8b" />
-      <path d="M13 15h7M13 19h7M13 23h4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+    <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="#0e6b63" />
+      <path d="M10 7h9l4 4v14H10z" fill="#fff" />
+      <path d="M13 15h7M13 19h7M13 23h4" stroke="#0e6b63" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   )
 }

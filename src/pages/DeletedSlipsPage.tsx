@@ -134,6 +134,7 @@ export function DeletedSlipsPage() {
           />
         </Field>
         <div className="filter-row">
+          <span className="muted small">Datas:</span>
           <DateRangeChips
             filters={filters}
             onChange={(patch) => {

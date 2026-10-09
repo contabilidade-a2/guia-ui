@@ -52,6 +52,39 @@ export function Field({ label, group, className, error, hint, children }: FieldP
   return group ? <div className={classes}>{content}</div> : <label className={classes}>{content}</label>
 }
 
+interface SegmentedProps<T extends string> {
+  /** Accessible name of the group. */
+  label: string
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
+  disabled?: boolean
+  /** Fills the chosen option with the accent colour instead of a soft tint. */
+  strong?: boolean
+}
+
+/** A few buttons side by side, one of them chosen: a compact alternative to a select. */
+export function Segmented<T extends string>({ label, options, value, onChange, disabled, strong }: SegmentedProps<T>) {
+  const classes = ['segmented']
+  if (strong) classes.push('segmented-strong')
+  if (disabled) classes.push('segmented-disabled')
+  return (
+    <div className={classes.join(' ')} role="group" aria-label={label}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={option.value === value}
+          disabled={disabled}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 interface ModalProps {
   title: string
   onClose: () => void

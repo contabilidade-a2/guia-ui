@@ -5,6 +5,7 @@ import { errorMessage, fieldErrors } from '../api/client'
 import { companiesApi, installmentPlansApi, slipTypesApi, slipsApi } from '../api/endpoints'
 import type { Company, InstallmentPlan, SendStatus, SlipDetail, SlipInput, SlipType } from '../api/types'
 import { CurrencyInput } from '../components/CurrencyInput'
+import { ChevronLeftIcon } from '../components/icons'
 import { MonthInput } from '../components/MonthInput'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { ErrorBanner, Field, Loading } from '../components/ui'
@@ -77,7 +78,11 @@ export function SlipFormPage() {
   )
 
   return (
-    <>
+    <div className="form-page">
+      <Link to={slipId === null ? '/slips' : `/slips/${slipId}`} className="back-link">
+        <ChevronLeftIcon />
+        {slipId === null ? 'Voltar para guias' : 'Voltar para a guia'}
+      </Link>
       <div className="page-header">
         <h1>{slipId === null ? 'Nova guia' : 'Editar guia'}</h1>
       </div>
@@ -93,7 +98,7 @@ export function SlipFormPage() {
           slip={loaded.data[3]}
         />
       )}
-    </>
+    </div>
   )
 }
 
@@ -185,122 +190,133 @@ function SlipForm({ slipId, companies, slipTypes, installmentPlans, slip }: Slip
   const backTo = slipId === null ? '/slips' : `/slips/${slipId}`
 
   return (
-        <form className="card form" onSubmit={submit}>
-          <ErrorBanner message={error} />
-          <Field label="Assunto" error={errors.subject} hint={hasPlan ? 'Vem do parcelamento.' : undefined}>
-            <input
-              value={form.subject}
-              onChange={(e) => set('subject', e.target.value)}
-              maxLength={200}
+    <form className="form form-sections" onSubmit={submit}>
+      <ErrorBanner message={error} />
+
+      <fieldset className="form-section">
+        <legend>Identificação</legend>
+        <div className="form-row">
+          <Field label="Tipo de guia" group error={errors.slipTypeId}>
+            <SearchableSelect
+              label="Tipo de guia"
+              options={slipTypes.map((slipType) => ({ value: String(slipType.id), label: slipType.name }))}
+              value={form.slipTypeId}
+              onChange={selectSlipType}
               required
-              autoFocus
+            />
+          </Field>
+          <Field label="Parcelamento" group hint={isInstallmentType ? 'Opcional.' : 'Só para tipos de guia de parcelamento.'}>
+            <SearchableSelect
+              label="Parcelamento"
+              options={selectablePlans.map((plan) => ({
+                value: String(plan.id),
+                label: `${plan.subject} (${plan.company.name})`,
+              }))}
+              value={form.installmentPlanId}
+              onChange={selectInstallmentPlan}
+              clearLabel="Nenhum"
+              placeholder="Nenhum"
+              disabled={!isInstallmentType}
+            />
+          </Field>
+          <Field label="Empresa" group error={errors.companyId} hint={hasPlan ? 'Vem do parcelamento.' : undefined}>
+            <SearchableSelect
+              label="Empresa"
+              options={companies.map((company) => ({ value: String(company.id), label: company.label }))}
+              value={form.companyId}
+              onChange={(value) => set('companyId', value)}
+              required
               disabled={hasPlan}
             />
           </Field>
+        </div>
+        <Field
+          label="Assunto"
+          error={errors.subject}
+          hint={hasPlan ? 'Empresa, assunto, origem e número Cigam vêm do parcelamento.' : undefined}
+        >
+          <input
+            value={form.subject}
+            onChange={(e) => set('subject', e.target.value)}
+            maxLength={200}
+            required
+            disabled={hasPlan}
+          />
+        </Field>
+        {hasPlan && (
           <div className="form-row">
-            <Field label="Tipo de guia" group error={errors.slipTypeId}>
-              <SearchableSelect
-                label="Tipo de guia"
-                options={slipTypes.map((slipType) => ({ value: String(slipType.id), label: slipType.name }))}
-                value={form.slipTypeId}
-                onChange={selectSlipType}
-                required
-              />
+            <Field label="Origem">
+              <input value={form.origin} disabled />
             </Field>
-            <Field
-              label="Parcelamento"
-              group
-              hint={isInstallmentType ? 'Opcional.' : 'Só para tipos de guia de parcelamento.'}
-            >
-              <SearchableSelect
-                label="Parcelamento"
-                options={selectablePlans.map((plan) => ({
-                  value: String(plan.id),
-                  label: `${plan.subject} (${plan.company.name})`,
-                }))}
-                value={form.installmentPlanId}
-                onChange={selectInstallmentPlan}
-                clearLabel="Nenhum"
-                placeholder="Nenhum"
-                disabled={!isInstallmentType}
-              />
-            </Field>
-            <Field
-              label="Empresa"
-              group
-              error={errors.companyId}
-              hint={hasPlan ? 'Vem do parcelamento.' : undefined}
-            >
-              <SearchableSelect
-                label="Empresa"
-                options={companies.map((company) => ({ value: String(company.id), label: company.label }))}
-                value={form.companyId}
-                onChange={(value) => set('companyId', value)}
-                required
-                disabled={hasPlan}
-              />
+            <Field label="Número Cigam" error={errors.cigamNumber}>
+              <input value={form.cigamNumber} disabled />
             </Field>
           </div>
-          <div className="form-row">
-            <Field label="Valor (R$)" error={errors.amount}>
-              <CurrencyInput value={form.amount} onChange={(value) => set('amount', value)} required />
-            </Field>
-            <Field label="Competência" error={errors.competenceDate}>
-              <MonthInput value={form.competenceDate} onChange={(value) => set('competenceDate', value)} required />
-            </Field>
-            <Field label="Data de vencimento" error={errors.dueDate}>
-              <input type="date" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} required />
-            </Field>
-          </div>
-          <div className="form-row">
-            {hasPlan && (
-              <Field label="Origem" hint="Vem do parcelamento.">
-                <input value={form.origin} disabled />
-              </Field>
-            )}
-            {hasPlan && (
-              <Field label="Número Cigam" error={errors.cigamNumber} hint="Vem do parcelamento.">
-                <input value={form.cigamNumber} disabled />
-              </Field>
-            )}
-            {slipId !== null && (
-              <Field
-                label="Status de envio"
-                error={errors.sendStatus}
-                hint={paid ? 'Guia com pagamento registrado não pode ser cancelada.' : undefined}
-              >
-                <select value={form.sendStatus} onChange={(e) => set('sendStatus', e.target.value as SendStatus)}>
-                  {Object.entries(SEND_STATUS_LABELS)
-                    .filter(([value]) => !(paid && value === 'CANCELED' && form.sendStatus !== 'CANCELED'))
-                    .map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-            )}
-          </div>
-          <Field label="Link do PDF da guia" error={errors.fileUrl} hint="Link https do arquivo no OneDrive.">
-            <input
-              type="url"
-              value={form.fileUrl}
-              onChange={(e) => set('fileUrl', e.target.value)}
-              placeholder="https://"
-              required
-            />
+        )}
+      </fieldset>
+
+      <fieldset className="form-section">
+        <legend>Valor e datas</legend>
+        <div className="form-row">
+          <Field label="Valor (R$)" error={errors.amount}>
+            <CurrencyInput value={form.amount} onChange={(value) => set('amount', value)} required />
           </Field>
-          <Field label="Observação" error={errors.note} hint="Opcional.">
-            <textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={3} />
+          <Field label="Competência" error={errors.competenceDate}>
+            <MonthInput value={form.competenceDate} onChange={(value) => set('competenceDate', value)} required />
           </Field>
-          <div className="form-actions">
-            <Link to={backTo} className="button">
-              Cancelar
-            </Link>
-            <button type="submit" className="button button-primary" disabled={submitting}>
-              {submitting ? 'Salvando…' : 'Salvar'}
-            </button>
+          <Field label="Vencimento" error={errors.dueDate}>
+            <input type="date" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} required />
+          </Field>
+        </div>
+      </fieldset>
+
+      {slipId !== null && (
+        <fieldset className="form-section">
+          <legend>Envio</legend>
+          <div className="form-row">
+            <Field
+              label="Status de envio"
+              error={errors.sendStatus}
+              hint={paid ? 'Guia com pagamento registrado não pode ser cancelada.' : undefined}
+            >
+              <select value={form.sendStatus} onChange={(e) => set('sendStatus', e.target.value as SendStatus)}>
+                {Object.entries(SEND_STATUS_LABELS)
+                  .filter(([value]) => !(paid && value === 'CANCELED' && form.sendStatus !== 'CANCELED'))
+                  .map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+              </select>
+            </Field>
           </div>
-        </form>
+        </fieldset>
+      )}
+
+      <fieldset className="form-section">
+        <legend>Arquivo e observação</legend>
+        <Field label="Link do PDF da guia" error={errors.fileUrl} hint="Link https do arquivo no OneDrive.">
+          <input
+            type="url"
+            value={form.fileUrl}
+            onChange={(e) => set('fileUrl', e.target.value)}
+            placeholder="https://"
+            required
+          />
+        </Field>
+        <Field label="Observação" error={errors.note} hint="Opcional.">
+          <textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={3} />
+        </Field>
+      </fieldset>
+
+      <div className="form-actions">
+        <Link to={backTo} className="button">
+          Cancelar
+        </Link>
+        <button type="submit" className="button button-primary" disabled={submitting}>
+          {submitting ? 'Salvando…' : 'Salvar guia'}
+        </button>
+      </div>
+    </form>
   )
 }

@@ -6,7 +6,19 @@ import { slipsApi } from '../api/endpoints'
 import type { HistoryEntry, SlipDetail } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { ErrorBanner, Field, Loading, SendStatusBadge, SlipStatusBadge } from '../components/ui'
-import { DELETE_SLIP_CONFIRMATION, HISTORY_EVENT_LABELS, ORIGIN_LABELS, formatDate, formatDateTime, formatMonth, formatMoney, todayIso } from '../lib/format'
+import { ChevronLeftIcon } from '../components/icons'
+import {
+  DELETE_SLIP_CONFIRMATION,
+  HISTORY_EVENT_LABELS,
+  ORIGIN_LABELS,
+  daysFromToday,
+  formatDate,
+  formatDateTime,
+  formatMonth,
+  formatMoney,
+  relativeDay,
+  todayIso,
+} from '../lib/format'
 
 export function SlipDetailPage() {
   const slipId = Number(useParams().id)
@@ -79,91 +91,140 @@ function SlipDetailView({ slipId }: { slipId: number }) {
   }
   if (!slip) return <Loading />
 
+  const paid = slip.receiptUrl !== null && slip.paymentDate !== null
+  const canceled = slip.sendStatus === 'CANCELED'
+  // Outlined while there is a payment for this user to register.
+  const paymentOpen = canRegisterPayment && !canceled && !paid
+
   return (
     <>
+      <Link to="/slips" className="back-link">
+        <ChevronLeftIcon />
+        Voltar para guias
+      </Link>
       <div className="page-header">
         <div>
-          <h1>{slip.subject}</h1>
-          <div className="badges">
+          <div className="title-line">
+            <h1>{slip.subject}</h1>
             <SlipStatusBadge status={slip.status} />
             <SendStatusBadge status={slip.sendStatus} />
           </div>
+          <div className="page-subtitle">
+            {slip.company.name} · {dueText(slip)}
+          </div>
         </div>
-        <div className="header-actions">
-          <Link to="/slips" className="button">
-            Voltar
-          </Link>
-          {canEditSlips && (
-            <>
-              <button type="button" className="button button-danger" onClick={deleteSlip}>
-                Excluir
-              </button>
-              <Link to={`/slips/${slip.id}/edit`} className="button button-primary">
-                Editar
-              </Link>
-            </>
-          )}
-        </div>
+        {canEditSlips && (
+          <div className="header-actions">
+            <button type="button" className="button button-danger" onClick={deleteSlip}>
+              Excluir
+            </button>
+            <Link to={`/slips/${slip.id}/edit`} className="button">
+              Editar
+            </Link>
+          </div>
+        )}
       </div>
       <ErrorBanner message={error} />
 
       <div className="detail-grid">
-        <section className="card">
-          <h2>Dados da guia</h2>
-          <dl className="details">
-            <dt>Empresa</dt>
-            <dd>{slip.company.label}</dd>
-            <dt>Tipo de guia</dt>
-            <dd>{slip.slipType.name}</dd>
-            <dt>Origem</dt>
-            <dd>{slip.origin ? ORIGIN_LABELS[slip.origin] : '—'}</dd>
-            <dt>Valor</dt>
-            <dd>{formatMoney(slip.amount)}</dd>
-            <dt>Competência</dt>
-            <dd>{formatMonth(slip.competenceDate)}</dd>
-            <dt>Vencimento</dt>
-            <dd>{formatDate(slip.dueDate)}</dd>
-            <dt>Número Cigam</dt>
-            <dd>{slip.cigamNumber ?? '—'}</dd>
-            <dt>Enviada em</dt>
-            <dd>
-              {formatDateTime(slip.sentAt)} por {slip.sentBy}
-            </dd>
-            <dt>PDF da guia</dt>
-            <dd>
-              {slip.fileUrl ? (
-                <a href={slip.fileUrl} target="_blank" rel="noreferrer">
-                  Abrir PDF
-                </a>
-              ) : (
-                <span className="muted">Indisponível: guia cancelada.</span>
-              )}
-            </dd>
-            <dt>Observação</dt>
-            <dd className="preserve-lines">{slip.note ?? '—'}</dd>
-          </dl>
-        </section>
+        <div className="detail-main">
+          <section>
+            <h2 className="section-title">Dados da guia</h2>
+            <dl className="card data-grid">
+              <div>
+                <dt>Valor</dt>
+                <dd className="data-amount">{formatMoney(slip.amount)}</dd>
+              </div>
+              <div>
+                <dt>Vencimento</dt>
+                <dd>{formatDate(slip.dueDate)}</dd>
+              </div>
+              <div>
+                <dt>Competência</dt>
+                <dd>{formatMonth(slip.competenceDate)}</dd>
+              </div>
+              <div>
+                <dt>Empresa</dt>
+                <dd>{slip.company.label}</dd>
+              </div>
+              <div>
+                <dt>Tipo de guia</dt>
+                <dd>{slip.slipType.name}</dd>
+              </div>
+              <div>
+                <dt>Origem</dt>
+                <dd>{slip.origin ? ORIGIN_LABELS[slip.origin] : '—'}</dd>
+              </div>
+              <div>
+                <dt>Número Cigam</dt>
+                <dd>{slip.cigamNumber ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>Enviada em</dt>
+                <dd>
+                  {formatDateTime(slip.sentAt)} · {slip.sentBy}
+                </dd>
+              </div>
+              <div>
+                <dt>PDF da guia</dt>
+                <dd>
+                  {slip.fileUrl ? (
+                    <a href={slip.fileUrl} target="_blank" rel="noreferrer">
+                      Abrir PDF
+                    </a>
+                  ) : (
+                    <span className="muted">Indisponível: guia cancelada.</span>
+                  )}
+                </dd>
+              </div>
+              <div className="data-wide">
+                <dt>Observação</dt>
+                <dd className="preserve-lines">{slip.note ?? '—'}</dd>
+              </div>
+            </dl>
+          </section>
 
-        <div className="detail-side">
-          <section className="card">
-            <h2>Pagamento</h2>
-            {slip.sendStatus === 'CANCELED' ? (
+          <section>
+            <h2 className="section-title">Histórico</h2>
+            {history.length === 0 ? (
+              <p className="muted">Carregando…</p>
+            ) : (
+              <ol className="history">
+                {history.map((entry, index) => (
+                  <li key={index}>
+                    <strong>{HISTORY_EVENT_LABELS[entry.eventType]}</strong>
+                    <span className="muted">
+                      {entry.userName} · {formatDateTime(entry.occurredAt)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+
+        <aside className="detail-side">
+          <section className={paymentOpen ? 'card payment-card payment-card-open' : 'card payment-card'}>
+            <h2>{paymentOpen ? 'Registrar pagamento' : 'Pagamento'}</h2>
+            {canceled ? (
               <p className="muted">Guia cancelada: pagamento indisponível.</p>
-            ) : slip.receiptUrl && slip.paymentDate ? (
+            ) : paid ? (
               <dl className="details">
                 <dt>Pago em</dt>
-                <dd>{formatDate(slip.paymentDate)}</dd>
+                <dd>{formatDate(slip.paymentDate!)}</dd>
                 <dt>Comprovante</dt>
                 <dd>
-                  <a href={slip.receiptUrl} target="_blank" rel="noreferrer">
+                  <a href={slip.receiptUrl!} target="_blank" rel="noreferrer">
                     Abrir comprovante
                   </a>
                 </dd>
               </dl>
+            ) : paymentOpen ? (
+              <p className="payment-card-intro">Ao salvar, a guia passa a Paga e o envio vai para Arquivado.</p>
             ) : (
               <p className="muted">Nenhum pagamento registrado.</p>
             )}
-            {canRegisterPayment && slip.sendStatus !== 'CANCELED' && (
+            {canRegisterPayment && !canceled && (
               <div className="payment-actions">
                 {/* keyed so the form starts over when the receipt is added, replaced or removed */}
                 <PaymentForm key={slip.receiptUrl ?? 'none'} slip={slip} onPaid={onPaymentChanged} />
@@ -175,30 +236,18 @@ function SlipDetailView({ slipId }: { slipId: number }) {
               </div>
             )}
           </section>
-
-          {/* Collapsed by default; the browser handles opening and closing. */}
-          <details className="card history-card">
-            <summary>
-              <h2>Histórico</h2>
-              <span className="muted small">
-                {history.length} {history.length === 1 ? 'evento' : 'eventos'}
-              </span>
-            </summary>
-            <ol className="history">
-              {history.map((entry, index) => (
-                <li key={index}>
-                  <strong>{HISTORY_EVENT_LABELS[entry.eventType]}</strong>
-                  <span className="muted">
-                    {entry.userName} · {formatDateTime(entry.occurredAt)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </details>
-        </div>
+        </aside>
       </div>
     </>
   )
+}
+
+/** `vence amanhã, 09/10/2026`, `venceu há 2 dias, 06/10/2026` or `paga em 07/10/2026`. */
+function dueText(slip: SlipDetail): string {
+  if (slip.paymentDate) return `paga em ${formatDate(slip.paymentDate)}`
+  const days = daysFromToday(slip.dueDate)
+  const verb = days < 0 ? 'venceu' : 'vence'
+  return `${verb} ${relativeDay(slip.dueDate)}, ${formatDate(slip.dueDate)}`
 }
 
 function PaymentForm({ slip, onPaid }: { slip: SlipDetail; onPaid: (updated: SlipDetail) => void }) {
@@ -241,7 +290,7 @@ function PaymentForm({ slip, onPaid }: { slip: SlipDetail; onPaid: (updated: Sli
       <Field label="Link do comprovante" error={errors.receiptUrl} hint="Link https do arquivo no OneDrive.">
         <input type="url" value={receiptUrl} onChange={(e) => setReceiptUrl(e.target.value)} placeholder="https://" required />
       </Field>
-      <Field label="Data de pagamento" error={errors.paymentDate}>
+      <Field label="Data de pagamento" error={errors.paymentDate} hint="Não pode ser futura.">
         <input type="date" value={paymentDate} max={todayIso()} onChange={(e) => setPaymentDate(e.target.value)} required />
       </Field>
       <div className="form-actions">
@@ -251,7 +300,7 @@ function PaymentForm({ slip, onPaid }: { slip: SlipDetail; onPaid: (updated: Sli
           </button>
         )}
         <button type="submit" className="button button-primary" disabled={submitting}>
-          {alreadyPaid ? 'Substituir comprovante' : 'Registrar pagamento'}
+          {alreadyPaid ? 'Substituir comprovante' : 'Salvar pagamento'}
         </button>
       </div>
     </form>

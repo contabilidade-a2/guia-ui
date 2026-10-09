@@ -5,7 +5,7 @@ Interface web do Sistema de Lançamento e Conferência de Guias. O back-end fica
 ## Stack
 
 - React 19 + TypeScript, Vite, `react-router-dom` com `HashRouter` (o GitHub Pages não tem fallback de SPA).
-- Sem biblioteca de componentes: CSS próprio em `src/styles.css`.
+- Sem biblioteca de componentes: CSS próprio em `src/styles.css`. Visual "Clean" (escolhido pela usuária em 08/10/2026 entre quatro propostas): superfícies brancas, bordas finas, uma cor de destaque (verde-petróleo `--primary`) e a fonte Manrope, carregada do Google Fonts em `index.html`. As cores ficam como variáveis no `:root` do CSS.
 - Hospedagem: GitHub Pages (repositório público), publicado pelo workflow `.github/workflows/deploy.yml` a cada push na `main`.
 
 ## Como rodar

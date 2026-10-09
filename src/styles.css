@@ -1,22 +1,34 @@
+/* Visual style "Clean": white surfaces, hairline borders, a single teal accent, Manrope (index.html). */
 :root {
-  --bg: #f4f6f8;
+  --bg: #fafaf9;
   --surface: #ffffff;
-  --border: #d9dfe5;
-  --text: #1c2630;
-  --muted: #5d6b78;
-  --primary: #1f5f8b;
-  --primary-dark: #174a6d;
-  --primary-soft: #e6f0f7;
-  --danger: #b3261e;
+  --surface-muted: #f4f4f1;
+  --border: #e7e7e4;
+  --border-soft: #efefec;
+  --control-border: #d9d9d4;
+  --text: #18181b;
+  --text-soft: #3f3f46;
+  --muted: #52525b;
+  --subtle: #71717a;
+  --primary: #0e6b63;
+  --primary-dark: #0a524c;
+  --primary-text: #0e5f58;
+  --primary-soft: #eef6f5;
+  --danger: #9b2219;
+  --danger-strong: #c2362b;
   --danger-soft: #fdecea;
-  --pending: #8a5a00;
-  --pending-soft: #fff3d6;
-  --paid: #1e6b3a;
-  --paid-soft: #e2f4e8;
-  --neutral-soft: #e9edf1;
-  --radius: 8px;
+  --danger-border: #f0c9c5;
+  --pending: #7a4a00;
+  --pending-strong: #b26b00;
+  --pending-soft: #fff4db;
+  --paid: #1e5e38;
+  --paid-strong: #2f7d4f;
+  --paid-soft: #e3f3e8;
+  --neutral-soft: #efefec;
+  --radius: 14px;
+  --radius-control: 10px;
 
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 15px;
   line-height: 1.45;
   color: var(--text);
@@ -34,22 +46,32 @@ body {
 }
 
 h1 {
-  font-size: 1.5rem;
   margin: 0;
+  font-size: 2.1rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 h2 {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0 0 0.75rem;
 }
 
 h3 {
   font-size: 1rem;
+  font-weight: 600;
   margin: 0 0 0.5rem;
 }
 
 a {
-  color: var(--primary);
+  color: var(--primary-text);
+}
+
+a:hover {
+  color: var(--primary-dark);
 }
 
 /* A link that should read as plain text; the row/icon around it already signals it's clickable. */
@@ -58,87 +80,167 @@ a {
   text-decoration: none;
 }
 
+.plain-link:hover {
+  color: var(--primary-text);
+  text-decoration: underline;
+}
+
 .muted {
   color: var(--muted);
 }
 
 .small {
-  font-size: 0.85rem;
+  font-size: 0.87rem;
+}
+
+/* Small uppercase heading over a block (Dados da guia, Histórico, a slip type in the day panel). */
+.section-title {
+  margin: 0 0 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 /* ---------- layout ---------- */
 
 .topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  min-height: 4rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1.5rem;
-  padding: 0.6rem 1.25rem;
-  background: var(--primary);
-  color: #fff;
+  gap: 0.25rem 2rem;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  color: var(--text);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+  text-decoration: none;
   white-space: nowrap;
-  padding-right: 1.25rem;
-  border-right: 1px solid rgb(255 255 255 / 35%);
 }
 
-.topbar a.brand {
-  padding: 0.35rem 1.25rem 0.35rem 0;
-  border-radius: 0;
-}
-
-.topbar a.brand:hover {
-  background: none;
-  opacity: 0.85;
+.brand:hover {
+  color: var(--text);
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0 1.4rem;
   flex: 1;
+  font-size: 0.93rem;
+  font-weight: 500;
 }
 
-.topbar a,
-.topbar .link-button {
-  color: #fff;
+.nav a {
+  padding: 1.3rem 0 1.15rem;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
   text-decoration: none;
-  padding: 0.35rem 0.7rem;
-  border-radius: 6px;
 }
 
-.topbar a:hover,
-.topbar .link-button:hover {
-  background: rgb(255 255 255 / 15%);
+.nav a:hover {
+  color: var(--text);
 }
 
-.topbar a.active {
-  background: rgb(255 255 255 / 25%);
-  font-weight: 600;
+.nav a.active {
+  color: var(--text);
+  border-bottom-color: var(--primary);
 }
 
 .topbar-user {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
+  position: relative;
 }
 
-.topbar-name {
-  margin-right: 0.5rem;
+.user-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.4rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 0.93rem;
+  cursor: pointer;
+}
+
+.user-button:hover {
+  background: var(--surface-muted);
+}
+
+.user-caret {
+  color: var(--subtle);
+  font-size: 0.75rem;
+}
+
+.avatar {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: var(--neutral-soft);
+  color: var(--text-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.user-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: 0 12px 32px rgb(24 24 27 / 12%);
+}
+
+.user-menu a,
+.user-menu button {
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 0.93rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.user-menu a:hover,
+.user-menu button:hover {
+  background: var(--surface-muted);
+  color: var(--text);
 }
 
 .content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 2.5rem 2rem 3.5rem;
 }
 
 .centered {
@@ -151,15 +253,47 @@ a {
 .page-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1.6rem;
+}
+
+.page-header > :first-child {
+  flex: 1 1 auto;
+}
+
+.page-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.93rem;
+  color: var(--muted);
+}
+
+/* The year next to the month in the calendar title. */
+.page-header h1 .muted {
+  color: var(--subtle);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.93rem;
+  text-decoration: none;
+}
+
+.title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .header-actions,
 .badges {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -171,7 +305,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: 1.5rem;
 }
 
 .narrow {
@@ -184,18 +318,23 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.45rem 0.9rem;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.2rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--surface);
-  color: var(--text);
+  color: var(--text-soft);
   font: inherit;
+  font-size: 0.93rem;
+  font-weight: 600;
   text-decoration: none;
   cursor: pointer;
 }
 
 .button:hover:not(:disabled) {
-  background: var(--neutral-soft);
+  background: var(--surface-muted);
+  color: var(--text);
 }
 
 .button:disabled {
@@ -211,29 +350,42 @@ a {
 
 .button-primary:hover:not(:disabled) {
   background: var(--primary-dark);
+  color: #fff;
 }
 
 .button-danger {
-  border-color: #f2b8b5;
+  border-color: var(--danger-border);
   color: var(--danger);
 }
 
 .button-danger:hover:not(:disabled) {
   background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .button-small {
-  padding: 0.25rem 0.6rem;
-  font-size: 0.9rem;
+  min-height: 2.35rem;
+  padding: 0 0.9rem;
+  font-size: 0.87rem;
+}
+
+.button-icon {
+  width: 2.75rem;
+  padding: 0;
 }
 
 .link-button {
   border: 0;
   background: none;
   padding: 0;
-  color: var(--primary);
+  color: var(--primary-text);
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--primary-dark);
 }
 
 .link-button.danger {
@@ -244,17 +396,18 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.3rem;
+  height: 2.3rem;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: none;
-  color: var(--primary);
+  color: var(--muted);
   cursor: pointer;
 }
 
 .icon-action:hover {
-  background: var(--primary-soft);
+  background: var(--neutral-soft);
+  color: var(--text);
 }
 
 .icon-action.danger {
@@ -266,7 +419,10 @@ a {
 }
 
 .icon-button {
+  width: 2.5rem;
+  height: 2.5rem;
   border: 0;
+  border-radius: var(--radius-control);
   background: none;
   font-size: 1.5rem;
   line-height: 1;
@@ -274,16 +430,43 @@ a {
   color: var(--muted);
 }
 
+.icon-button:hover {
+  background: var(--neutral-soft);
+  color: var(--text);
+}
+
 input,
 select,
 textarea {
   width: 100%;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   background: #fff;
   color: var(--text);
   font: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8a8a93;
+}
+
+/* A field locked by the system (e.g. filled in from the installment plan) or by permission. */
+input:disabled,
+select:disabled,
+textarea:disabled,
+.multi-select-button:disabled {
+  border-style: dashed;
+  background: var(--surface-muted);
+  color: var(--text-soft);
+  opacity: 1;
+  cursor: not-allowed;
 }
 
 input:focus-visible,
@@ -295,8 +478,56 @@ a:focus-visible {
   outline-offset: 1px;
 }
 
-input[type='checkbox'] {
-  width: auto;
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1.15rem;
+  height: 1.15rem;
+  min-height: 0;
+  accent-color: var(--primary);
+}
+
+/* Buttons side by side where only one is chosen (Todos / Ativos / Inativos, SEFAZ / ECAC / PGFN). */
+.segmented {
+  display: flex;
+  min-height: 2.75rem;
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: #fff;
+}
+
+.segmented button {
+  flex: 1 1 0;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.93rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.segmented-strong button[aria-pressed='true'] {
+  background: var(--primary);
+  color: #fff;
+}
+
+.segmented-disabled {
+  border-style: dashed;
+  background: var(--surface-muted);
 }
 
 /* ---------- forms ---------- */
@@ -304,46 +535,105 @@ input[type='checkbox'] {
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1.1rem;
 }
 
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.9rem;
+  gap: 1.1rem;
+}
+
+.form-page {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* The slip form: groups of fields under small uppercase legends, no card around them. */
+.form-sections {
+  gap: 2rem;
+}
+
+.form-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.form-section legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 0.2rem;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.form-section legend + * {
+  clear: both;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .field-label {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.93rem;
 }
 
 .field-hint {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.87rem;
 }
 
 .field-error {
   color: var(--danger);
-  font-size: 0.85rem;
+  font-size: 0.87rem;
 }
 
 .checkbox {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: 0.93rem;
+  cursor: pointer;
 }
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.75rem;
+}
+
+.form-sections .form-actions {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* What an installment plan's slips will be called, under its form. */
+.subject-preview {
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  font-size: 0.87rem;
+  color: var(--text-soft);
+}
+
+.subject-preview strong {
+  color: var(--text);
 }
 
 .password-input {
@@ -352,7 +642,7 @@ input[type='checkbox'] {
 }
 
 .password-input input {
-  padding-right: 2.5rem;
+  padding-right: 2.75rem;
 }
 
 .password-toggle {
@@ -360,7 +650,7 @@ input[type='checkbox'] {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 2.5rem;
+  width: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -376,18 +666,23 @@ input[type='checkbox'] {
 
 .login-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1rem;
+  padding: 2rem;
 }
 
 .login-card h1 {
-  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.6rem;
+  font-weight: 700;
 }
 
 .login-card p {
-  margin: -0.6rem 0 0;
+  margin: -0.6rem 0 0.4rem;
 }
 
 .multi-select {
@@ -396,13 +691,14 @@ input[type='checkbox'] {
 
 .multi-select-button {
   width: 100%;
+  min-height: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   background: #fff;
   color: var(--text);
   font: inherit;
@@ -432,8 +728,8 @@ input[type='checkbox'] {
   padding: 0.4rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 6px 20px rgb(15 25 35 / 15%);
+  border-radius: var(--radius-control);
+  box-shadow: 0 12px 32px rgb(24 24 27 / 12%);
 }
 
 /* Stays put while the option list below it scrolls, so it works with long lists (e.g. 20+ companies). */
@@ -451,15 +747,19 @@ input[type='checkbox'] {
 }
 
 .multi-select-search {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
   font: inherit;
 }
 
 .multi-select-option {
-  padding: 0.3rem 0.4rem;
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
   cursor: pointer;
 }
 
@@ -469,9 +769,9 @@ input[type='checkbox'] {
 
 /* Option of SearchableSelect (single choice). */
 .select-option {
-  padding: 0.3rem 0.4rem;
+  padding: 0.4rem 0.5rem;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   font: inherit;
@@ -493,6 +793,8 @@ input[type='checkbox'] {
   position: absolute;
   width: 1px;
   height: 1px;
+  min-height: 0;
+  padding: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -516,23 +818,33 @@ input[type='checkbox'] {
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
 }
 
+/* ---------- filters ---------- */
+
+/* A strip over the list, separated by a hairline instead of a card. */
 .filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.9rem 0.75rem;
   align-items: end;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
-/* date inputs are a little taller than text ones; a fixed height keeps the row aligned */
-.filters input,
-.filters .multi-select-button,
-.filters .button {
-  height: 2.5rem;
+.card.filters {
+  padding: 0 0 1.25rem;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.filters .field-label {
+  font-size: 0.87rem;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 /* first row: company (3 columns) + slip type + status; then the dates + clear */
@@ -549,18 +861,14 @@ input[type='checkbox'] {
   grid-column: span 2;
 }
 
-/* installment plans: six columns like the slip list (same width per field); company (3) + number, Cigam, status */
+/* installment plans: company (2) + number, Cigam, status (2: the segmented buttons need room) */
 .filters-plans {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
-/* the clear button only exists while a filter is set: without it, company takes its column too */
-.filters-plans .filter-wide {
+.filters-plans .filter-wide,
+.filters-plans .filter-status {
   grid-column: span 2;
-}
-
-.filters-plans .filter-wider {
-  grid-column: span 3;
 }
 
 /* deleted slips: company (2 columns) + slip type + status + deleted by */
@@ -569,10 +877,7 @@ input[type='checkbox'] {
 }
 
 @media (max-width: 900px) {
-  .filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+  .filters,
   .filters-six,
   .filters-plans {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -581,7 +886,7 @@ input[type='checkbox'] {
   .filters .filter-wide,
   .filters-six .filter-wide,
   .filters-plans .filter-wide,
-  .filters-plans .filter-wider,
+  .filters-plans .filter-status,
   .filters .filter-medium {
     grid-column: 1 / -1;
   }
@@ -602,9 +907,9 @@ input[type='checkbox'] {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 6px;
-  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  margin-bottom: 1rem;
 }
 
 .form .banner {
@@ -614,7 +919,7 @@ input[type='checkbox'] {
 .banner-error {
   background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid #f2b8b5;
+  border: 1px solid var(--danger-border);
 }
 
 .banner-success {
@@ -625,9 +930,9 @@ input[type='checkbox'] {
 
 .badge {
   display: inline-block;
-  padding: 0.1rem 0.55rem;
+  padding: 0.2rem 0.7rem;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -671,48 +976,81 @@ input[type='checkbox'] {
 table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.93rem;
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid var(--border);
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid var(--border-soft);
   vertical-align: top;
 }
 
 th {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--muted);
+  letter-spacing: 0.06em;
+  color: var(--subtle);
   white-space: nowrap;
+}
+
+th:first-child,
+td:first-child {
+  padding-left: 0;
+}
+
+th:last-child,
+td:last-child {
+  padding-right: 0;
+}
+
+.card th:first-child,
+.card td:first-child {
+  padding-left: 0.75rem;
+}
+
+.card th:last-child,
+.card td:last-child {
+  padding-right: 0.75rem;
 }
 
 tbody tr:last-child td {
   border-bottom: 0;
 }
 
+/* The two lines of a slip row: subject, then company. */
+.cell-title {
+  font-weight: 600;
+}
+
+.cell-sub {
+  font-size: 0.87rem;
+  color: var(--muted);
+}
+
 .numeric {
   text-align: right;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .row-actions {
   white-space: nowrap;
   text-align: right;
-  padding-top: 0.3rem;
-  padding-bottom: 0.3rem;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
   vertical-align: middle;
 }
 
 .row-actions > * + * {
-  margin-left: 0.25rem;
+  margin-left: 0.2rem;
 }
 
 .empty-row {
   text-align: center;
-  padding: 1.5rem;
+  padding: 2rem;
 }
 
 .pagination {
@@ -721,7 +1059,9 @@ tbody tr:last-child td {
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding-top: 0.75rem;
+  padding-top: 1.25rem;
+  font-size: 0.93rem;
+  color: var(--muted);
 }
 
 .pagination .muted {
@@ -737,39 +1077,51 @@ tbody tr:last-child td {
   gap: 0.4rem;
 }
 
-.calendar-nav select {
-  width: auto;
+.calendar-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2rem;
 }
 
-.year-input {
-  width: 5.5rem;
+.calendar-main {
+  flex: 999 1 600px;
+  min-width: 0;
 }
 
-.calendar {
+.calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
-  padding: 0.6rem;
+  padding-bottom: 0.6rem;
 }
 
 .calendar-weekday {
-  text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--muted);
-  padding: 0.25rem 0;
+  color: var(--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* The 1px gap over the border colour draws the grid lines. */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .calendar-cell {
-  min-height: 5.5rem;
+  min-height: 6rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.25rem;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  gap: 0.35rem;
+  padding: 0.65rem;
+  border: 0;
   background: var(--surface);
   color: var(--text);
   font: inherit;
@@ -778,112 +1130,219 @@ tbody tr:last-child td {
 }
 
 .calendar-blank {
-  border-color: transparent;
-  background: transparent;
+  background: var(--bg);
   cursor: default;
 }
 
 button.calendar-cell:hover {
-  border-color: var(--primary);
-}
-
-.calendar-has-slips {
-  background: var(--primary-soft);
-}
-
-.calendar-today .calendar-day-number {
-  background: var(--primary);
-  color: #fff;
-  border-radius: 999px;
-  min-width: 1.7rem;
-  text-align: center;
-}
-
-.calendar-selected {
-  border-color: var(--primary);
-  box-shadow: inset 0 0 0 2px var(--primary);
+  background: #f7faf9;
 }
 
 .calendar-day-number {
-  font-weight: 600;
-  padding: 0 0.3rem;
+  font-size: 0.93rem;
+  font-weight: 500;
 }
 
-.calendar-counts {
+.calendar-today .calendar-day-number {
+  width: 1.85rem;
+  height: 1.85rem;
+  margin: -0.25rem 0 0 -0.25rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-selected,
+button.calendar-selected:hover {
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+/* One dot per slip, coloured by status, then "3 guias". */
+.calendar-dots {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 4px;
+  margin-top: auto;
 }
 
-.count {
-  display: inline-block;
-  min-width: 1.5rem;
-  padding: 0 0.4rem;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-align: center;
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
 }
 
-.count-overdue {
-  background: var(--danger);
-  color: #fff;
+.dot-overdue {
+  background: var(--danger-strong);
 }
 
-.count-pending {
-  background: #f2c14e;
-  color: #3d2a00;
+.dot-pending {
+  background: var(--pending-strong);
 }
 
-.count-paid {
-  background: var(--paid);
-  color: #fff;
+.dot-paid {
+  background: var(--paid-strong);
+}
+
+.calendar-caption {
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .swatch {
   display: inline-block;
-  width: 1.5rem;
-  height: 0.95rem;
-  border-radius: 999px;
-  vertical-align: -0.12rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0.6rem 0 1.25rem;
-  font-size: 0.88rem;
+  gap: 1.25rem;
+  margin-top: 1rem;
+  font-size: 0.87rem;
   color: var(--muted);
 }
 
-.day-section h2 {
-  margin-bottom: 0.75rem;
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* The selected day, next to the calendar (below it on narrow screens). */
+.day-panel {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+.day-panel-weekday {
+  font-size: 0.87rem;
+  font-weight: 500;
+  color: var(--subtle);
+}
+
+.day-panel h2 {
+  margin: 0.1rem 0 0.25rem;
+  font-size: 1.45rem;
+}
+
+.day-panel-summary {
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 0.93rem;
+  color: var(--muted);
 }
 
 .day-group {
-  margin-bottom: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+.day-group .section-title {
+  margin-bottom: 0.25rem;
+}
+
+.day-slip {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.day-slip:last-child {
+  border-bottom: 0;
+}
+
+.day-slip-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.day-slip-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.25rem;
+  font-size: 0.87rem;
+}
+
+.day-slip .badge {
+  align-self: flex-start;
+}
+
+.day-panel-empty {
+  margin: 1.25rem 0 0;
 }
 
 /* ---------- slip detail ---------- */
 
 .detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 1rem;
-  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.detail-main {
+  flex: 999 1 540px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .detail-side {
+  flex: 1 1 340px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
+/* label over value, in as many columns as fit */
+.data-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem 1.5rem;
+}
+
+.data-grid dt {
+  font-size: 0.87rem;
+  font-weight: 500;
+  color: var(--subtle);
+}
+
+.data-grid dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.data-grid .data-wide {
+  grid-column: 1 / -1;
+}
+
+.data-grid .data-wide dd {
+  font-weight: 400;
+}
+
+.data-amount {
+  font-size: 1.45rem;
+  letter-spacing: -0.01em;
+}
+
+/* label beside value: the deleted slip modal and the paid receipt */
 .details {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.45rem 1rem;
+  gap: 0.5rem 1rem;
   margin: 0;
 }
 
@@ -896,11 +1355,26 @@ button.calendar-cell:hover {
   overflow-wrap: anywhere;
 }
 
+/* The payment block; outlined in the accent colour while there is a payment to register. */
+.payment-card-open {
+  border: 2px solid var(--primary);
+}
+
+.payment-card h2 {
+  margin-bottom: 0.25rem;
+}
+
+.payment-card-intro {
+  margin: 0 0 1.25rem;
+  font-size: 0.93rem;
+  color: var(--muted);
+}
+
 .payment-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.75rem;
+  margin-top: 1rem;
 }
 
 .payment-actions:empty {
@@ -910,6 +1384,12 @@ button.calendar-cell:hover {
 .payment-actions .payment-form {
   flex-basis: 100%;
   margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.payment-form .form-actions .button-primary {
+  flex: 1 1 auto;
 }
 
 .preserve-lines {
@@ -936,54 +1416,57 @@ button.calendar-cell:hover {
   border-top: 1px solid var(--border);
 }
 
-.history-card summary {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  list-style: none;
-}
-
-.history-card summary::-webkit-details-marker {
-  display: none;
-}
-
-.history-card summary::before {
-  content: '';
-  width: 0.5rem;
-  height: 0.5rem;
-  border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted);
-  transform: rotate(-45deg);
-  transition: transform 0.15s;
-}
-
-.history-card[open] summary::before {
-  transform: rotate(45deg);
-}
-
-.history-card summary h2 {
-  margin: 0;
-}
-
-.history-card[open] summary {
-  margin-bottom: 0.75rem;
-}
-
+/* History as a timeline, oldest first: a dot per event, the latest one in the accent colour. */
 .history {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 0.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
 }
 
 .history li {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding-left: 0.75rem;
-  border-left: 3px solid var(--primary-soft);
+  padding: 0 0 1.1rem 1.5rem;
+}
+
+.history li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.4rem;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d4d4cf;
+}
+
+.history li:last-child::before {
+  background: var(--primary);
+}
+
+.history li::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1.15rem;
+  bottom: 0.1rem;
+  width: 1px;
+  background: var(--border);
+}
+
+.history li:last-child {
+  padding-bottom: 0;
+}
+
+.history li:last-child::after {
+  display: none;
+}
+
+.history .muted {
+  font-size: 0.87rem;
 }
 
 /* ---------- modal ---------- */
@@ -991,46 +1474,90 @@ button.calendar-cell:hover {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(15 25 35 / 45%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4.5rem 1rem 1rem;
+  background: rgb(24 24 27 / 42%);
   z-index: 10;
+  overflow-y: auto;
 }
 
 .modal {
   width: 100%;
-  max-width: 460px;
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
+  max-width: 560px;
   background: var(--surface);
-  border-radius: var(--radius);
-  padding: 1.1rem;
+  border-radius: 18px;
+  padding: 1.4rem 1.5rem 1.5rem;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 18%);
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.25rem;
 }
 
 .modal-header h2 {
   margin: 0;
+  font-size: 1.45rem;
 }
 
 @media (max-width: 760px) {
-  .detail-grid {
-    grid-template-columns: 1fr;
+  .calendar-cell {
+    min-height: 4.25rem;
+    padding: 0.35rem;
   }
 
-  .calendar-cell {
-    min-height: 4rem;
-    padding: 0.25rem;
+  .calendar-caption {
+    display: none;
+  }
+
+  .topbar-inner,
+  .content {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
   .content {
-    padding: 0.9rem;
+    padding-top: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+  }
+
+  .topbar-inner {
+    padding-top: 0.6rem;
+  }
+
+  /* brand and user on the first line; the menu below, one line that scrolls sideways */
+  .topbar-user {
+    margin-left: auto;
+  }
+
+  /* only the initials show; the name stays for screen readers */
+  .user-button > span:not(.avatar):not(.user-caret) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .nav {
+    order: 3;
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 1.25rem;
+  }
+
+  .nav a {
+    padding: 0.75rem 0 0.6rem;
+    white-space: nowrap;
   }
 }
 
@@ -1042,18 +1569,19 @@ button.calendar-cell:hover {
   align-items: center;
   flex: 1;
   min-width: 0;
-  height: 2.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  min-height: 2.75rem;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   background: #fff;
 }
 
 .range-input input {
   min-width: 0;
+  min-height: 0;
   height: 100%;
   border: 0;
   background: none;
-  padding: 0.45rem 0.4rem;
+  padding: 0.45rem 0.5rem;
 }
 
 .range-input-separator {
@@ -1067,19 +1595,19 @@ button.calendar-cell:hover {
 }
 
 .period-shortcut {
-  padding: 0.2rem 0.6rem;
+  padding: 0.25rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
   color: var(--muted);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.87rem;
   cursor: pointer;
 }
 
 .period-shortcut:hover {
   background: var(--primary-soft);
-  color: var(--primary);
+  color: var(--primary-dark);
 }
 
 /* a full-width line of the filter grid: the date chips and the clear link */
@@ -1102,7 +1630,7 @@ button.calendar-cell:hover {
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--control-border);
   border-radius: 999px;
   color: var(--muted);
   font-size: 0.9rem;
@@ -1111,7 +1639,7 @@ button.calendar-cell:hover {
 .filter-chip-on {
   border: 1px solid var(--primary);
   background: var(--primary-soft);
-  color: var(--primary);
+  color: var(--primary-dark);
 }
 
 .filter-chip-main,
@@ -1121,7 +1649,7 @@ button.calendar-cell:hover {
   background: none;
   color: inherit;
   font: inherit;
-  padding: 0.3rem 0.75rem;
+  padding: 0.35rem 0.85rem;
 }
 
 button.filter-chip-main,
@@ -1145,9 +1673,19 @@ button.filter-chip-main,
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  padding: 0.6rem;
+  padding: 0.75rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 6px 20px rgb(15 25 35 / 15%);
+  border-radius: var(--radius-control);
+  box-shadow: 0 12px 32px rgb(24 24 27 / 12%);
+}
+
+/* a checkbox sitting in a form row, lined up with the inputs next to it */
+.checkbox-field {
+  align-self: end;
+  min-height: 2.75rem;
+}
+
+.numeric-text {
+  font-variant-numeric: tabular-nums;
 }

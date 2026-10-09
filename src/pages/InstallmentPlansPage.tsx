@@ -4,10 +4,10 @@ import { errorMessage, fieldErrors } from '../api/client'
 import { companiesApi, installmentPlansApi } from '../api/endpoints'
 import type { BrazilianState, Company, InstallmentOrigin, InstallmentPlan, InstallmentPlanFilters, Page } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
-import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
+import { DeleteIcon, EditIcon, IconButton, PlusIcon } from '../components/icons'
 import { MultiSelect } from '../components/MultiSelect'
 import { SearchableSelect } from '../components/SearchableSelect'
-import { ErrorBanner, Field, Loading, Modal } from '../components/ui'
+import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
 import { ORIGIN_LABELS, STATE_LABELS } from '../lib/format'
 import { onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
@@ -37,6 +37,14 @@ export function InstallmentPlansPage() {
         ? Promise.resolve<Page<InstallmentPlan>>({ items: [], page: 0, size: PAGE_SIZE, totalItems: 0, totalPages: 0 })
         : installmentPlansApi.search(filters, page, PAGE_SIZE),
     [filters, page],
+  )
+  // How many of the listed plans are active, for the subtitle; only needed while the status filter shows all.
+  const activeCount = useLoad(
+    () =>
+      nothingSelected || filters.active !== null
+        ? Promise.resolve(null)
+        : installmentPlansApi.search({ ...filters, active: true }, 0, 1).then((result) => result.totalItems),
+    [filters],
   )
   /** `null` = closed, `'new'` = creating, otherwise the plan being edited. */
   const [editing, setEditing] = useState<InstallmentPlan | 'new' | null>(null)
@@ -77,16 +85,20 @@ export function InstallmentPlansPage() {
   return (
     <>
       <div className="page-header">
-        <h1>Parcelamentos</h1>
+        <div>
+          <h1>Parcelamentos</h1>
+          <div className="page-subtitle">{plans.data ? planCount(plans.data.totalItems, activeCount.data) : '\u00a0'}</div>
+        </div>
         {canManageInstallmentPlans && (
           <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
+            <PlusIcon />
             Novo parcelamento
           </button>
         )}
       </div>
 
       <div className="card filters filters-plans">
-        <Field label="Empresa" group className={hasFilters ? 'filter-wide' : 'filter-wider'}>
+        <Field label="Empresa" group className="filter-wide">
           <MultiSelect
             label="Empresa"
             options={(companies.data ?? []).map((company) => ({ value: String(company.id), label: company.label }))}
@@ -115,20 +127,22 @@ export function InstallmentPlansPage() {
             placeholder="Completo ou parcial"
           />
         </Field>
-        <Field label="Status">
-          <select
+        <Field label="Status" group className="filter-status">
+          <Segmented
+            label="Status"
+            options={[
+              { value: '', label: 'Todos' },
+              { value: 'true', label: 'Ativos' },
+              { value: 'false', label: 'Inativos' },
+            ]}
             value={filters.active === null ? '' : String(filters.active)}
-            onChange={(e) => setFilter('active', e.target.value === '' ? null : e.target.value === 'true')}
-          >
-            <option value="">Todos</option>
-            <option value="true">Ativo</option>
-            <option value="false">Inativo</option>
-          </select>
+            onChange={(value) => setFilter('active', value === '' ? null : value === 'true')}
+          />
         </Field>
         {hasFilters && (
           <button
             type="button"
-            className="button filters-clear"
+            className="link-button filter-row filter-row-end"
             onClick={() => {
               setFilters(EMPTY_FILTERS)
               setNumberInput('')
@@ -144,7 +158,7 @@ export function InstallmentPlansPage() {
       <ErrorBanner message={error ?? companies.error ?? plans.error} onRetry={plans.error ? plans.reload : undefined} />
       {plans.loading && !plans.data && <Loading />}
       {plans.data && (
-        <div className="card">
+        <div>
           <div className="table-wrapper">
           <table>
             <thead>
@@ -161,10 +175,10 @@ export function InstallmentPlansPage() {
             <tbody>
               {plans.data.items.map((plan) => (
                 <tr key={plan.id}>
-                  <td>{plan.number}</td>
+                  <td className="cell-title numeric-text">{plan.number}</td>
                   <td>{ORIGIN_LABELS[plan.origin]}</td>
-                  <td>{plan.state ?? ''}</td>
-                  <td>{plan.company.label}</td>
+                  <td>{plan.state ?? '—'}</td>
+                  <td>{plan.company.name}</td>
                   <td>{plan.cigamNumber}</td>
                   <td>
                     <span className={`badge ${plan.active ? 'badge-paid' : 'badge-archived'}`}>
@@ -197,7 +211,9 @@ export function InstallmentPlansPage() {
           </div>
           <div className="pagination">
             <span className="muted">
-              {plans.data.totalItems} {plans.data.totalItems === 1 ? 'parcelamento' : 'parcelamentos'}
+              {plans.data.totalItems === 0
+                ? 'Nenhum parcelamento'
+                : `Mostrando ${page * PAGE_SIZE + 1}–${page * PAGE_SIZE + plans.data.items.length} de ${plans.data.totalItems}`}
             </span>
             <button type="button" className="button button-small" disabled={page === 0} onClick={() => setPage(page - 1)}>
               Anterior
@@ -277,7 +293,7 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
     <Modal title={plan ? 'Editar parcelamento' : 'Novo parcelamento'} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <ErrorBanner message={error} />
-        <Field label="Número" error={errors.number}>
+        <Field label="Número" error={errors.number} hint="Só dígitos, até 30. Pontos e traços colados são removidos.">
           <input
             inputMode="numeric"
             maxLength={30}
@@ -289,17 +305,19 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
         </Field>
         <div className="form-row">
           <Field label="Origem" group error={errors.origin}>
-            <SearchableSelect
+            <Segmented
               label="Origem"
-              options={Object.entries(ORIGIN_LABELS).map(([value, label]) => ({ value, label }))}
+              strong
+              options={(Object.keys(ORIGIN_LABELS) as InstallmentOrigin[]).map((value) => ({ value, label: ORIGIN_LABELS[value] }))}
               value={origin}
               onChange={(value) => {
-                setOrigin(value as InstallmentOrigin | '')
+                setOrigin(value)
                 // Only SEFAZ plans have a UF.
                 if (value !== 'SEFAZ') setState('')
               }}
-              required
             />
+            {/* the buttons can't be `required`: this hidden input makes the browser ask for an origin */}
+            <input className="visually-hidden" tabIndex={-1} aria-hidden="true" required value={origin} onChange={() => {}} />
           </Field>
           <Field
             label="UF"
@@ -326,28 +344,47 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
             required
           />
         </Field>
-        <Field label="Número Cigam" error={errors.cigamNumber}>
-          <input
-            inputMode="numeric"
-            maxLength={20}
-            value={cigamNumber}
-            onChange={(e) => setCigamNumber(onlyDigits(e.target.value))}
-            required
-          />
-        </Field>
-        <label className="checkbox">
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          Ativo
-        </label>
+        <div className="form-row">
+          <Field label="Número Cigam" error={errors.cigamNumber}>
+            <input
+              inputMode="numeric"
+              maxLength={20}
+              value={cigamNumber}
+              onChange={(e) => setCigamNumber(onlyDigits(e.target.value))}
+              required
+            />
+          </Field>
+          <label className="checkbox checkbox-field">
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+            Ativo
+          </label>
+        </div>
+        {number && (
+          <div className="subject-preview">
+            Assunto das guias: <strong>{planSubject(number, origin, state)}</strong>
+          </div>
+        )}
         <div className="form-actions">
           <button type="button" className="button" onClick={onClose}>
             Cancelar
           </button>
           <button type="submit" className="button button-primary" disabled={submitting}>
-            Salvar
+            {submitting ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
       </form>
     </Modal>
   )
+}
+
+/** `48 parcelamentos · 41 ativos`; the active part only when the list shows every status. */
+function planCount(total: number, active: number | null): string {
+  const text = total === 1 ? '1 parcelamento' : `${total} parcelamentos`
+  if (active === null) return text
+  return `${text} · ${active} ${active === 1 ? 'ativo' : 'ativos'}`
+}
+
+/** Same as the server's `InstallmentPlan.subject`: `Parcelamento 123`, or `Parcelamento 123 SP` on SEFAZ. */
+function planSubject(number: string, origin: InstallmentOrigin | '', state: BrazilianState | ''): string {
+  return origin === 'SEFAZ' && state ? `Parcelamento ${number} ${state}` : `Parcelamento ${number}`
 }

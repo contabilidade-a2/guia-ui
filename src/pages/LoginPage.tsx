@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { errorMessage } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import { BrandIcon } from '../components/icons'
 import { PasswordInput } from '../components/PasswordInput'
 import { ErrorBanner, Field } from '../components/ui'
 
@@ -34,7 +35,10 @@ export function LoginPage() {
   return (
     <div className="centered">
       <form className="card login-card" onSubmit={submit}>
-        <h1>Sistema de Guias</h1>
+        <h1>
+          <BrandIcon />
+          Sistema de Guias
+        </h1>
         <p className="muted">Lançamento e conferência de guias</p>
         <ErrorBanner message={error} />
         <Field label="E-mail">

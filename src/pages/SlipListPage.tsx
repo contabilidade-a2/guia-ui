@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { companiesApi, slipTypesApi, slipsApi } from '../api/endpoints'
 import type { SlipFilters } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
-import { DeleteIcon, EditIcon, IconButton, IconLink, ViewIcon } from '../components/icons'
+import { DeleteIcon, EditIcon, IconButton, IconLink, PlusIcon, ViewIcon } from '../components/icons'
 import { DateRangeChips } from '../components/DateRangeChips'
 import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, SendStatusBadge, SlipStatusBadge } from '../components/ui'
@@ -85,13 +85,21 @@ export function SlipListPage() {
 
   const hasFilters = Object.values(filters).some((value) => (Array.isArray(value) ? true : Boolean(value)))
   const result = slips.data
+  const firstShown = result && result.items.length > 0 ? page * PAGE_SIZE + 1 : 0
+  const lastShown = result ? page * PAGE_SIZE + result.items.length : 0
 
   return (
     <>
       <div className="page-header">
-        <h1>Guias</h1>
+        <div>
+          <h1>Guias</h1>
+          <div className="page-subtitle">
+            {result ? `${result.totalItems} ${result.totalItems === 1 ? 'guia encontrada' : 'guias encontradas'}` : '\u00a0'}
+          </div>
+        </div>
         {canEditSlips && (
           <Link to="/slips/new" className="button button-primary">
+            <PlusIcon />
             Nova guia
           </Link>
         )}
@@ -152,6 +160,7 @@ export function SlipListPage() {
           />
         </Field>
         <div className="filter-row">
+          <span className="muted small">Datas:</span>
           <DateRangeChips filters={filters} onChange={patchFilters} />
           {hasFilters && (
             <button type="button" className="link-button filter-row-end" onClick={clearFilters}>
@@ -166,15 +175,15 @@ export function SlipListPage() {
       {slips.loading && !result && <Loading />}
 
       {result && (
-        <div className="card">
+        <div>
           <div className="table-wrapper">
             <table>
               <thead>
                 <tr>
                   <th>Assunto</th>
                   <th>Tipo de guia</th>
-                  <th>Status de envio</th>
-                  <th>Data de envio</th>
+                  <th>Envio</th>
+                  <th>Enviada em</th>
                   <th>Vencimento</th>
                   <th>Status</th>
                   <th aria-label="Ações" />
@@ -184,16 +193,16 @@ export function SlipListPage() {
                 {result.items.map((slip) => (
                   <tr key={slip.id}>
                     <td>
-                      <Link to={`/slips/${slip.id}`} className="plain-link">
+                      <Link to={`/slips/${slip.id}`} className="plain-link cell-title">
                         {slip.subject}
                       </Link>
-                      <div className="muted small">{slip.company.name}</div>
+                      <div className="cell-sub">{slip.company.name}</div>
                     </td>
                     <td>{slip.slipType.name}</td>
                     <td>
                       <SendStatusBadge status={slip.sendStatus} />
                     </td>
-                    <td>{formatDateTime(slip.sentAt)}</td>
+                    <td className="muted">{formatDateTime(slip.sentAt)}</td>
                     <td>{formatDate(slip.dueDate)}</td>
                     <td>
                       <SlipStatusBadge status={slip.status} />
@@ -231,7 +240,7 @@ export function SlipListPage() {
           </div>
           <div className="pagination">
             <span className="muted">
-              {result.totalItems} {result.totalItems === 1 ? 'guia' : 'guias'}
+              {result.totalItems === 0 ? 'Nenhuma guia' : `Mostrando ${firstShown}–${lastShown} de ${result.totalItems}`}
             </span>
             <button type="button" className="button button-small" disabled={page === 0} onClick={() => setPage(page - 1)}>
               Anterior
