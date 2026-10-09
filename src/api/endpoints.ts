@@ -60,6 +60,7 @@ export const installmentPlansApi = {
     if (filters.number) params.set('number', filters.number)
     if (filters.cigamNumber) params.set('cigamNumber', filters.cigamNumber)
     if (filters.status !== null) params.set('status', filters.status)
+    if (filters.origin !== null) params.set('origin', filters.origin)
     return request<Page<InstallmentPlan>>('GET', `/api/installment-plans?${params}`)
   },
   /** The ACTIVE plans, unpaged: the plan select of the slip form. */

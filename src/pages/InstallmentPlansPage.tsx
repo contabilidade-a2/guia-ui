@@ -27,6 +27,7 @@ const EMPTY_FILTERS: InstallmentPlanFilters = {
   number: '',
   cigamNumber: '',
   status: null,
+  origin: null,
 }
 
 export function InstallmentPlansPage() {
@@ -88,7 +89,7 @@ export function InstallmentPlansPage() {
     }
   }
 
-  const hasFilters = filters.companyIds !== null || filters.number !== '' || filters.cigamNumber !== '' || filters.status !== null
+  const hasFilters = filters.companyIds !== null || filters.number !== '' || filters.cigamNumber !== '' || filters.status !== null || filters.origin !== null
 
   return (
     <>
@@ -133,6 +134,17 @@ export function InstallmentPlansPage() {
             value={cigamInput}
             onChange={(e) => setCigamInput(onlyDigits(e.target.value))}
             placeholder="Completo ou parcial"
+          />
+        </Field>
+        <Field label="Origem" group>
+          <Segmented
+            label="Origem"
+            options={[
+              { value: '', label: 'Todas' },
+              ...(Object.keys(ORIGIN_LABELS) as InstallmentOrigin[]).map((value) => ({ value, label: ORIGIN_LABELS[value] })),
+            ]}
+            value={filters.origin ?? ''}
+            onChange={(value) => setFilter('origin', value === '' ? null : value)}
           />
         </Field>
         <Field label="Status" group className="filter-status">

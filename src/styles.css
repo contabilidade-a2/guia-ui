@@ -895,10 +895,10 @@ input[type='radio'] {
   grid-column: span 3;
 }
 
-/* slip list: company, CNPJ and type share what is left; origin and status are button groups that size to
-   their content, so everything stays on one line while it fits */
+/* slip list: company, CNPJ and type share what is left; status is a button group that sizes to its content,
+   so everything stays on one line while it fits */
 .filters-slips {
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.2fr) auto auto;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
 }
 
 .filters-slips .filter-wide {
@@ -920,14 +920,30 @@ input[type='radio'] {
   }
 }
 
-/* installment plans: company (2) + number, Cigam, status (2: the segmented buttons need room) */
+/* installment plans: company, number and Cigam share what is left; origin and status are button groups that
+   size to their content, so everything stays on one line while it fits */
 .filters-plans {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) auto auto;
 }
 
 .filters-plans .filter-wide,
 .filters-plans .filter-status {
-  grid-column: span 2;
+  grid-column: auto;
+}
+
+.filters-plans .segmented button {
+  padding: 0 0.6rem;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 1280px) {
+  .filters-plans {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters-plans .filter-wide {
+    grid-column: 1 / -1;
+  }
 }
 
 /* deleted slips: company (2 columns) + slip type + status + deleted by */

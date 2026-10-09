@@ -111,6 +111,8 @@ export interface InstallmentPlanFilters {
   cigamNumber: string
   /** `null` means "all" (no filter). */
   status: InstallmentStatus | null
+  /** `null` means "all" (no filter). */
+  origin: InstallmentOrigin | null
 }
 
 export interface SlipSummary {

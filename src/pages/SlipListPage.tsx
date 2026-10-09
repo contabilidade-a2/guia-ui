@@ -9,7 +9,7 @@ import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge } from '../components/ui'
 import { errorMessage } from '../api/client'
 import type { Page, SlipSummary } from '../api/types'
-import { DELETE_SLIP_CONFIRMATION, ORIGIN_LABELS, SLIP_STATUS_LABELS, formatDate, formatInstantDate } from '../lib/format'
+import { DELETE_SLIP_CONFIRMATION, SLIP_STATUS_LABELS, formatDate, formatInstantDate } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 
 const PAGE_SIZE = 20
@@ -105,7 +105,7 @@ export function SlipListPage() {
         )}
       </div>
 
-      {/* One line of filters (origin and status as buttons), then a line with the date chips. */}
+      {/* One line of filters (status as buttons), then a line with the date chips. */}
       <div className="card filters filters-slips">
         <Field label="Empresa" group className="filter-wide">
           <MultiSelect
@@ -135,17 +135,6 @@ export function SlipListPage() {
             allText="Todos"
             noneText="Nenhum"
             countText={(count) => `${count} tipos`}
-          />
-        </Field>
-        <Field label="Origem" group>
-          <Segmented
-            label="Origem"
-            options={[
-              { value: '', label: 'Todas' },
-              ...Object.entries(ORIGIN_LABELS).map(([value, label]) => ({ value, label })),
-            ]}
-            value={filters.origins?.[0] ?? ''}
-            onChange={(value) => setFilter('origins', value === '' ? null : [value])}
           />
         </Field>
         <Field label="Status" group>
