@@ -852,13 +852,29 @@ input[type='radio'] {
   grid-column: span 3;
 }
 
-/* slip list: six columns, so company (2) + CNPJ + slip type + origin + status fill the first row */
-.filters-six {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+/* slip list: company, CNPJ and type share what is left; origin and status are button groups that size to
+   their content, so everything stays on one line while it fits */
+.filters-slips {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.2fr) auto auto;
 }
 
-.filters-six .filter-wide {
-  grid-column: span 2;
+.filters-slips .filter-wide {
+  grid-column: auto;
+}
+
+.filters-slips .segmented button {
+  padding: 0 0.6rem;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 1280px) {
+  .filters-slips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters-slips .filter-wide {
+    grid-column: 1 / -1;
+  }
 }
 
 /* installment plans: company (2) + number, Cigam, status (2: the segmented buttons need room) */
@@ -878,13 +894,12 @@ input[type='radio'] {
 
 @media (max-width: 900px) {
   .filters,
-  .filters-six,
+  .filters-slips,
   .filters-plans {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .filters .filter-wide,
-  .filters-six .filter-wide,
   .filters-plans .filter-wide,
   .filters-plans .filter-status,
   .filters .filter-medium {
@@ -894,7 +909,7 @@ input[type='radio'] {
 
 @media (max-width: 480px) {
   .filters,
-  .filters-six,
+  .filters-slips,
   .filters-plans {
     grid-template-columns: minmax(0, 1fr);
   }

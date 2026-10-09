@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { DeleteIcon, EditIcon, IconButton, IconLink, PlusIcon, ViewIcon } from '../components/icons'
 import { DateRangeChips } from '../components/DateRangeChips'
 import { MultiSelect } from '../components/MultiSelect'
-import { ErrorBanner, Field, Loading, SendStatusBadge, SlipStatusBadge } from '../components/ui'
+import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge } from '../components/ui'
 import { errorMessage } from '../api/client'
 import type { Page, SlipSummary } from '../api/types'
 import { DELETE_SLIP_CONFIRMATION, ORIGIN_LABELS, SLIP_STATUS_LABELS, formatDate, formatInstantDate } from '../lib/format'
@@ -105,8 +105,8 @@ export function SlipListPage() {
         )}
       </div>
 
-      {/* The five choice filters (company is the widest), then a line with the date chips. */}
-      <div className="card filters filters-six">
+      {/* One line of filters (origin and status as buttons), then a line with the date chips. */}
+      <div className="card filters filters-slips">
         <Field label="Empresa" group className="filter-wide">
           <MultiSelect
             label="Empresa"
@@ -138,25 +138,25 @@ export function SlipListPage() {
           />
         </Field>
         <Field label="Origem" group>
-          <MultiSelect
+          <Segmented
             label="Origem"
-            options={Object.entries(ORIGIN_LABELS).map(([value, label]) => ({ value, label }))}
-            selected={filters.origins}
-            onChange={(values) => setFilter('origins', values)}
-            allText="Todas"
-            noneText="Nenhuma"
-            countText={(count) => `${count} origens`}
+            options={[
+              { value: '', label: 'Todas' },
+              ...Object.entries(ORIGIN_LABELS).map(([value, label]) => ({ value, label })),
+            ]}
+            value={filters.origins?.[0] ?? ''}
+            onChange={(value) => setFilter('origins', value === '' ? null : [value])}
           />
         </Field>
         <Field label="Status" group>
-          <MultiSelect
+          <Segmented
             label="Status da guia"
-            options={Object.entries(SLIP_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
-            selected={filters.statuses}
-            onChange={(values) => setFilter('statuses', values)}
-            allText="Todos"
-            noneText="Nenhum"
-            countText={(count) => `${count} status`}
+            options={[
+              { value: '', label: 'Todos' },
+              ...Object.entries(SLIP_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+            ]}
+            value={filters.statuses?.[0] ?? ''}
+            onChange={(value) => setFilter('statuses', value === '' ? null : [value])}
           />
         </Field>
         <div className="filter-row">
