@@ -177,7 +177,7 @@ export function InstallmentPlansPage() {
                 <th>UF</th>
                 <th>Empresa</th>
                 <th>Número Cigam</th>
-                <th>Parcelas</th>
+                <th>Nº parcelas</th>
                 <th>Status</th>
                 <th aria-label="Ações" />
               </tr>
