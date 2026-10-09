@@ -156,6 +156,10 @@ function SlipDetailView({ slipId }: { slipId: number }) {
                 <dd>{slip.origin ? ORIGIN_LABELS[slip.origin] : '—'}</dd>
               </div>
               <div>
+                <dt>Parcela</dt>
+                <dd>{slip.installmentNumber ?? '—'}</dd>
+              </div>
+              <div>
                 <dt>Número Cigam</dt>
                 <dd>{slip.cigamNumber ?? '—'}</dd>
               </div>
@@ -184,8 +188,12 @@ function SlipDetailView({ slipId }: { slipId: number }) {
             </dl>
           </section>
 
-          <section>
-            <h2 className="section-title">Histórico</h2>
+          {/* Closed whenever the slip is opened; a click on the title shows or hides the trail. */}
+          <details className="history-toggle">
+            <summary>
+              <span className="section-title">Histórico</span>
+              {history.length > 0 && <span className="muted"> · {history.length}</span>}
+            </summary>
             {history.length === 0 ? (
               <p className="muted">Carregando…</p>
             ) : (
@@ -200,7 +208,7 @@ function SlipDetailView({ slipId }: { slipId: number }) {
                 ))}
               </ol>
             )}
-          </section>
+          </details>
         </div>
 
         <aside className="detail-side">

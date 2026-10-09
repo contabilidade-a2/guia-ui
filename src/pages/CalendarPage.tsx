@@ -17,15 +17,17 @@ import {
 } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 
-/** The day's slips as dots coloured by status, overdue first (at most a dozen, so the cell keeps its size). */
-function dots(info: CalendarDay): string[] {
-  const statuses = [
-    ...Array<string>(info.overdue).fill('overdue'),
-    ...Array<string>(info.pending).fill('pending'),
-    ...Array<string>(info.paid).fill('paid'),
-  ]
-  return statuses.slice(0, 12)
+/** One numbered badge per status present in the day (overdue first), instead of one dot per slip. */
+function badges(info: CalendarDay): { status: string; count: number }[] {
+  return [
+    { status: 'overdue', count: info.overdue },
+    { status: 'pending', count: info.pending },
+    { status: 'paid', count: info.paid },
+  ].filter((badge) => badge.count > 0)
 }
+
+const FIRST_YEAR = 2000
+const LAST_YEAR = 2100
 
 function slipCount(count: number): string {
   return count === 1 ? '1 guia' : `${count} guias`
@@ -37,6 +39,8 @@ export function CalendarPage() {
   const [year, setYear] = useState(() => Number(today.slice(0, 4)))
   const [month, setMonth] = useState(() => Number(today.slice(5, 7)))
   const [selected, setSelected] = useState(today)
+  // The year is typed freely and only applied once it is a complete, valid year.
+  const [yearText, setYearText] = useState(String(year))
 
   const days = useLoad(() => calendarApi.month(year, month), [year, month])
   const dayGroups = useLoad(() => calendarApi.day(selected), [selected])
@@ -52,6 +56,13 @@ export function CalendarPage() {
     const date = new Date(newYear, newMonth - 1, 1)
     setYear(date.getFullYear())
     setMonth(date.getMonth() + 1)
+    setYearText(String(date.getFullYear()))
+  }
+
+  function typeYear(text: string) {
+    setYearText(text)
+    const typed = Number(text)
+    if (/^\d{4}$/.test(text) && typed >= FIRST_YEAR && typed <= LAST_YEAR) setYear(typed)
   }
 
   function goToToday() {
@@ -70,11 +81,33 @@ export function CalendarPage() {
             <button type="button" className="button button-icon" onClick={() => goTo(year, month - 1)} aria-label="Mês anterior">
               <ChevronLeftIcon />
             </button>
-            <button type="button" className="button" onClick={goToToday}>
-              Hoje
-            </button>
+            <select
+              className="month-select"
+              value={month}
+              onChange={(e) => goTo(year, Number(e.target.value))}
+              aria-label="Mês"
+            >
+              {MONTH_NAMES.map((name, index) => (
+                <option key={name} value={index + 1}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <input
+              className="year-input"
+              type="number"
+              min={FIRST_YEAR}
+              max={LAST_YEAR}
+              value={yearText}
+              onChange={(e) => typeYear(e.target.value)}
+              onBlur={() => setYearText(String(year))}
+              aria-label="Ano"
+            />
             <button type="button" className="button button-icon" onClick={() => goTo(year, month + 1)} aria-label="Próximo mês">
               <ChevronRightIcon />
+            </button>
+            <button type="button" className="button" onClick={goToToday}>
+              Hoje
             </button>
           </div>
         </div>
@@ -119,14 +152,13 @@ export function CalendarPage() {
                 >
                   <span className="calendar-day-number">{index + 1}</span>
                   {info && (
-                    <>
-                      <span className="calendar-dots">
-                        {dots(info).map((status, dotIndex) => (
-                          <span key={dotIndex} className={`dot dot-${status}`} />
-                        ))}
-                      </span>
-                      <span className="calendar-caption">{slipCount(info.total)}</span>
-                    </>
+                    <span className="calendar-badges">
+                      {badges(info).map((badge) => (
+                        <span key={badge.status} className={`count-badge dot-${badge.status}`}>
+                          {badge.count}
+                        </span>
+                      ))}
+                    </span>
                   )}
                 </button>
               )

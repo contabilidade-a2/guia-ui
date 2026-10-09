@@ -9,7 +9,7 @@ import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, SendStatusBadge, SlipStatusBadge } from '../components/ui'
 import { errorMessage } from '../api/client'
 import type { Page, SlipSummary } from '../api/types'
-import { DELETE_SLIP_CONFIRMATION, ORIGIN_LABELS, SLIP_STATUS_LABELS, formatDate, formatDateTime } from '../lib/format'
+import { DELETE_SLIP_CONFIRMATION, ORIGIN_LABELS, SLIP_STATUS_LABELS, formatDate, formatInstantDate } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 
 const PAGE_SIZE = 20
@@ -202,7 +202,7 @@ export function SlipListPage() {
                     <td>
                       <SendStatusBadge status={slip.sendStatus} />
                     </td>
-                    <td className="muted">{formatDateTime(slip.sentAt)}</td>
+                    <td className="muted">{formatInstantDate(slip.sentAt)}</td>
                     <td>{formatDate(slip.dueDate)}</td>
                     <td>
                       <SlipStatusBadge status={slip.status} />
