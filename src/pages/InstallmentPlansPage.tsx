@@ -188,7 +188,7 @@ export function InstallmentPlansPage() {
                 <th>Origem</th>
                 <th>UF</th>
                 <th>Empresa</th>
-                <th>Número Cigam</th>
+                <th>Nº Cigam</th>
                 <th>Nº parcelas</th>
                 <th>Status</th>
                 <th aria-label="Ações" />
@@ -431,7 +431,8 @@ function planCount(total: number, active: number | null): string {
   return `${text} · ${active} ${active === 1 ? 'ativo' : 'ativos'}`
 }
 
-/** Same as the server's `InstallmentPlan.subject`: `Parcelamento 123`, or `Parcelamento 123 SP` on SEFAZ. */
+/** Same as the server's `InstallmentPlan.subject`: `Parcelamento SEFAZ SP 123`, `Parcelamento PGFN 123`, or `Parcelamento 123` on ECAC. */
 function planSubject(number: string, origin: InstallmentOrigin | '', state: BrazilianState | ''): string {
-  return origin === 'SEFAZ' && state ? `Parcelamento ${number} ${state}` : `Parcelamento ${number}`
+  const parts = ['Parcelamento', origin === 'ECAC' ? '' : origin, origin === 'SEFAZ' ? state : '', number]
+  return parts.filter(Boolean).join(' ')
 }

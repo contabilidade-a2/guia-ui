@@ -83,7 +83,7 @@ export interface InstallmentPlan {
   origin: InstallmentOrigin
   /** Only SEFAZ plans have a state (UF). */
   state: BrazilianState | null
-  /** `Parcelamento 123` or `Parcelamento 123 SP`: the subject of a slip tied to this plan. */
+  /** `Parcelamento SEFAZ SP 123`, `Parcelamento PGFN 123` or `Parcelamento 123` (ECAC): the subject of its slips. */
   subject: string
   cigamNumber: string
   company: CompanyRef
