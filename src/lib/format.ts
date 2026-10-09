@@ -1,4 +1,4 @@
-import type { BrazilianState, HistoryEventType, InstallmentOrigin, SendStatus, SlipStatus, UserRole } from '../api/types'
+import type { BrazilianState, HistoryEventType, InstallmentOrigin, InstallmentStatus, SendStatus, SlipStatus, UserRole } from '../api/types'
 
 const TIME_ZONE = 'America/Sao_Paulo'
 
@@ -26,6 +26,11 @@ export function lastDayOfMonth(month: string): string {
 
 export function formatDateTime(isoInstant: string): string {
   return new Date(isoInstant).toLocaleString('pt-BR', { timeZone: TIME_ZONE, dateStyle: 'short', timeStyle: 'short' })
+}
+
+/** An instant as a date only (`2026-10-05T14:30:00Z` → `05/10/2026`), in Brazil's time zone. */
+export function formatInstantDate(isoInstant: string): string {
+  return new Date(isoInstant).toLocaleDateString('pt-BR', { timeZone: TIME_ZONE })
 }
 
 export function formatMoney(value: number): string {
@@ -96,6 +101,12 @@ export const ORIGIN_LABELS: Record<InstallmentOrigin, string> = {
   SEFAZ: 'SEFAZ',
   ECAC: 'ECAC',
   PGFN: 'PGFN',
+}
+
+export const INSTALLMENT_STATUS_LABELS: Record<InstallmentStatus, string> = {
+  ACTIVE: 'Ativo',
+  RESCINDED: 'Rescindido',
+  SETTLED: 'Liquidado',
 }
 
 export const STATE_LABELS: Record<BrazilianState, string> = {

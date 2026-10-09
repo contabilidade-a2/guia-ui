@@ -70,6 +70,9 @@ export interface SlipTypeInput {
 }
 
 export type InstallmentOrigin = 'SEFAZ' | 'ECAC' | 'PGFN'
+
+/** Only ACTIVE plans can be picked for a new slip. */
+export type InstallmentStatus = 'ACTIVE' | 'RESCINDED' | 'SETTLED'
 export type BrazilianState =
   | 'AC' | 'AL' | 'AP' | 'AM' | 'BA' | 'CE' | 'DF' | 'ES' | 'GO' | 'MA' | 'MT' | 'MS' | 'MG' | 'PA'
   | 'PB' | 'PR' | 'PE' | 'PI' | 'RJ' | 'RN' | 'RS' | 'RO' | 'RR' | 'SC' | 'SP' | 'SE' | 'TO'
@@ -84,7 +87,8 @@ export interface InstallmentPlan {
   subject: string
   cigamNumber: string
   company: CompanyRef
-  active: boolean
+  installmentCount: number
+  status: InstallmentStatus
   createdAt: string
   updatedAt: string
 }
@@ -95,7 +99,8 @@ export interface InstallmentPlanInput {
   state: BrazilianState | null
   cigamNumber: string
   companyId: number
-  active: boolean
+  installmentCount: number
+  status: InstallmentStatus
 }
 
 export interface InstallmentPlanFilters {
@@ -105,7 +110,7 @@ export interface InstallmentPlanFilters {
   /** Part of the Cigam number; empty means any. */
   cigamNumber: string
   /** `null` means "all" (no filter). */
-  active: boolean | null
+  status: InstallmentStatus | null
 }
 
 export interface SlipSummary {
@@ -133,6 +138,8 @@ export interface SlipDetail extends SlipSummary {
   paymentDate: string | null
   /** When set, the plan's company/subject/cigamNumber are the ones that count; see SlipFormPage. */
   installmentPlanId: number | null
+  /** Which installment of the plan this slip pays; null without a plan. */
+  installmentNumber: number | null
 }
 
 export interface SlipInput {
@@ -147,6 +154,7 @@ export interface SlipInput {
   fileUrl: string
   sendStatus?: SendStatus
   installmentPlanId: number | null
+  installmentNumber: number | null
 }
 
 /**

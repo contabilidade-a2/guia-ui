@@ -2,13 +2,21 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { errorMessage, fieldErrors } from '../api/client'
 import { companiesApi, installmentPlansApi } from '../api/endpoints'
-import type { BrazilianState, Company, InstallmentOrigin, InstallmentPlan, InstallmentPlanFilters, Page } from '../api/types'
+import type {
+  BrazilianState,
+  Company,
+  InstallmentOrigin,
+  InstallmentPlan,
+  InstallmentPlanFilters,
+  InstallmentStatus,
+  Page,
+} from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { DeleteIcon, EditIcon, IconButton, PlusIcon } from '../components/icons'
 import { MultiSelect } from '../components/MultiSelect'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
-import { ORIGIN_LABELS, STATE_LABELS } from '../lib/format'
+import { INSTALLMENT_STATUS_LABELS, ORIGIN_LABELS, STATE_LABELS } from '../lib/format'
 import { onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 
@@ -18,7 +26,7 @@ const EMPTY_FILTERS: InstallmentPlanFilters = {
   companyIds: null,
   number: '',
   cigamNumber: '',
-  active: null,
+  status: null,
 }
 
 export function InstallmentPlansPage() {
@@ -41,9 +49,9 @@ export function InstallmentPlansPage() {
   // How many of the listed plans are active, for the subtitle; only needed while the status filter shows all.
   const activeCount = useLoad(
     () =>
-      nothingSelected || filters.active !== null
+      nothingSelected || filters.status !== null
         ? Promise.resolve(null)
-        : installmentPlansApi.search({ ...filters, active: true }, 0, 1).then((result) => result.totalItems),
+        : installmentPlansApi.search({ ...filters, status: 'ACTIVE' }, 0, 1).then((result) => result.totalItems),
     [filters],
   )
   /** `null` = closed, `'new'` = creating, otherwise the plan being edited. */
@@ -80,7 +88,7 @@ export function InstallmentPlansPage() {
     }
   }
 
-  const hasFilters = filters.companyIds !== null || filters.number !== '' || filters.cigamNumber !== '' || filters.active !== null
+  const hasFilters = filters.companyIds !== null || filters.number !== '' || filters.cigamNumber !== '' || filters.status !== null
 
   return (
     <>
@@ -132,11 +140,12 @@ export function InstallmentPlansPage() {
             label="Status"
             options={[
               { value: '', label: 'Todos' },
-              { value: 'true', label: 'Ativos' },
-              { value: 'false', label: 'Inativos' },
+              { value: 'ACTIVE', label: 'Ativos' },
+              { value: 'RESCINDED', label: 'Rescindidos' },
+              { value: 'SETTLED', label: 'Liquidados' },
             ]}
-            value={filters.active === null ? '' : String(filters.active)}
-            onChange={(value) => setFilter('active', value === '' ? null : value === 'true')}
+            value={filters.status ?? ''}
+            onChange={(value) => setFilter('status', value === '' ? null : value)}
           />
         </Field>
         {hasFilters && (
@@ -168,6 +177,7 @@ export function InstallmentPlansPage() {
                 <th>UF</th>
                 <th>Empresa</th>
                 <th>Número Cigam</th>
+                <th>Parcelas</th>
                 <th>Status</th>
                 <th aria-label="Ações" />
               </tr>
@@ -180,10 +190,9 @@ export function InstallmentPlansPage() {
                   <td>{plan.state ?? '—'}</td>
                   <td>{plan.company.name}</td>
                   <td>{plan.cigamNumber}</td>
+                  <td>{plan.installmentCount}</td>
                   <td>
-                    <span className={`badge ${plan.active ? 'badge-paid' : 'badge-archived'}`}>
-                      {plan.active ? 'Ativo' : 'Inativo'}
-                    </span>
+                    <span className={`badge ${STATUS_BADGES[plan.status]}`}>{INSTALLMENT_STATUS_LABELS[plan.status]}</span>
                   </td>
                   <td className="row-actions">
                     {canManageInstallmentPlans && (
@@ -260,7 +269,8 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
   const [state, setState] = useState<BrazilianState | ''>(plan?.state ?? '')
   const [cigamNumber, setCigamNumber] = useState(plan?.cigamNumber ?? '')
   const [companyId, setCompanyId] = useState(plan ? String(plan.company.id) : '')
-  const [active, setActive] = useState(plan?.active ?? true)
+  const [installmentCount, setInstallmentCount] = useState(plan ? String(plan.installmentCount) : '')
+  const [status, setStatus] = useState<InstallmentStatus>(plan?.status ?? 'ACTIVE')
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -277,7 +287,8 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
         state: origin === 'SEFAZ' && state !== '' ? state : null,
         cigamNumber,
         companyId: Number(companyId),
-        active,
+        installmentCount: Number(installmentCount),
+        status,
       }
       if (plan) await installmentPlansApi.update(plan.id, input)
       else await installmentPlansApi.create(input)
@@ -354,11 +365,29 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
               required
             />
           </Field>
-          <label className="checkbox checkbox-field">
-            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-            Ativo
-          </label>
+          <Field label="Quantidade de parcelas" error={errors.installmentCount}>
+            <input
+              type="number"
+              min="1"
+              max="999"
+              step="1"
+              value={installmentCount}
+              onChange={(e) => setInstallmentCount(e.target.value)}
+              required
+            />
+          </Field>
         </div>
+        <Field label="Status" group error={errors.status}>
+          <Segmented
+            label="Status"
+            options={(Object.keys(INSTALLMENT_STATUS_LABELS) as InstallmentStatus[]).map((value) => ({
+              value,
+              label: INSTALLMENT_STATUS_LABELS[value],
+            }))}
+            value={status}
+            onChange={setStatus}
+          />
+        </Field>
         {number && (
           <div className="subject-preview">
             Assunto das guias: <strong>{planSubject(number, origin, state)}</strong>
@@ -375,6 +404,12 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
       </form>
     </Modal>
   )
+}
+
+const STATUS_BADGES: Record<InstallmentStatus, string> = {
+  ACTIVE: 'badge-paid',
+  RESCINDED: 'badge-overdue',
+  SETTLED: 'badge-archived',
 }
 
 /** `48 parcelamentos · 41 ativos`; the active part only when the list shows every status. */

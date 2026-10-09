@@ -59,11 +59,12 @@ export const installmentPlansApi = {
     filters.companyIds?.forEach((id) => params.append('companyId', id))
     if (filters.number) params.set('number', filters.number)
     if (filters.cigamNumber) params.set('cigamNumber', filters.cigamNumber)
-    if (filters.active !== null) params.set('active', String(filters.active))
+    if (filters.status !== null) params.set('status', filters.status)
     return request<Page<InstallmentPlan>>('GET', `/api/installment-plans?${params}`)
   },
-  /** Every plan, unpaged: the plan select of the slip form. */
-  options: () => request<InstallmentPlan[]>('GET', '/api/installment-plans/options'),
+  /** The ACTIVE plans, unpaged: the plan select of the slip form. */
+  activeOptions: () => request<InstallmentPlan[]>('GET', '/api/installment-plans/options?status=ACTIVE'),
+  get: (id: number) => request<InstallmentPlan>('GET', `/api/installment-plans/${id}`),
   create: (input: InstallmentPlanInput) => request<InstallmentPlan>('POST', '/api/installment-plans', input),
   update: (id: number, input: InstallmentPlanInput) =>
     request<InstallmentPlan>('PUT', `/api/installment-plans/${id}`, input),
