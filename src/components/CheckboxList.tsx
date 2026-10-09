@@ -11,6 +11,9 @@ interface CheckboxListProps {
   selected: string[]
   onChange: (selected: string[]) => void
   emptyText: string
+  /** Labels of the two bulk links; the defaults are masculine ("todos"). */
+  selectAllText?: string
+  clearAllText?: string
 }
 
 /**
@@ -18,7 +21,14 @@ interface CheckboxListProps {
  * companies a user is notified about). Unlike `MultiSelect`, it's not a popover and `selected`
  * is a plain array — there's no "everything, including future options" sentinel here.
  */
-export function CheckboxList({ options, selected, onChange, emptyText }: CheckboxListProps) {
+export function CheckboxList({
+  options,
+  selected,
+  onChange,
+  emptyText,
+  selectAllText = 'Marcar todos',
+  clearAllText = 'Desmarcar todos',
+}: CheckboxListProps) {
   const [query, setQuery] = useState('')
 
   const visibleOptions = query.trim()
@@ -27,6 +37,16 @@ export function CheckboxList({ options, selected, onChange, emptyText }: Checkbo
 
   function toggle(value: string) {
     onChange(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value])
+  }
+
+  // The bulk links act on what is listed, so a search narrows them ("Marcar todas" on the filtered ones).
+  function selectVisible() {
+    onChange([...new Set([...selected, ...visibleOptions.map((option) => option.value)])])
+  }
+
+  function clearVisible() {
+    const hidden = new Set(visibleOptions.map((option) => option.value))
+    onChange(selected.filter((item) => !hidden.has(item)))
   }
 
   if (options.length === 0) return <span className="muted small">{emptyText}</span>
@@ -40,6 +60,15 @@ export function CheckboxList({ options, selected, onChange, emptyText }: Checkbo
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      <div className="checkbox-list-bulk">
+        <button type="button" className="link-button" onClick={selectVisible} disabled={visibleOptions.length === 0}>
+          {selectAllText}
+        </button>
+        <button type="button" className="link-button" onClick={clearVisible} disabled={visibleOptions.length === 0}>
+          {clearAllText}
+        </button>
+        <span className="muted small">{selected.length} de {options.length} marcados</span>
+      </div>
       <div className="checkbox-list-options">
         {visibleOptions.length === 0 && <span className="muted small">Nenhuma opção encontrada.</span>}
         {visibleOptions.map((option) => (

@@ -115,7 +115,13 @@ function SlipDetailView({ slipId }: { slipId: number }) {
         </div>
         {canEditSlips && (
           <div className="header-actions">
-            <button type="button" className="button button-danger" onClick={deleteSlip}>
+            <button
+              type="button"
+              className="button button-danger"
+              onClick={deleteSlip}
+              disabled={slip.receiptUrl !== null}
+              title={slip.receiptUrl !== null ? 'Remova o comprovante de pagamento para poder excluir a guia' : undefined}
+            >
               Excluir
             </button>
             <Link to={`/slips/${slip.id}/edit`} className="button">

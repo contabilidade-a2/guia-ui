@@ -204,7 +204,12 @@ export function SlipListPage() {
                           <IconLink to={`/slips/${slip.id}/edit`} label={`Editar ${slip.subject}`}>
                             <EditIcon />
                           </IconLink>
-                          <IconButton label={`Excluir ${slip.subject}`} onClick={() => remove(slip)} danger>
+                          <IconButton
+                            label={slip.status === 'PAID' ? 'Guia com comprovante não pode ser excluída' : `Excluir ${slip.subject}`}
+                            onClick={() => remove(slip)}
+                            disabled={slip.status === 'PAID'}
+                            danger
+                          >
                             <DeleteIcon />
                           </IconButton>
                         </>

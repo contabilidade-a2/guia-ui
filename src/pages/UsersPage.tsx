@@ -183,6 +183,8 @@ function UserForm({ user, isSelf, onClose, onSaved }: UserFormProps) {
             selected={notificationCompanyIds}
             onChange={setNotificationCompanyIds}
             emptyText="Nenhuma empresa cadastrada."
+            selectAllText="Marcar todas"
+            clearAllText="Desmarcar todas"
           />
         </Field>
         <label className="checkbox">

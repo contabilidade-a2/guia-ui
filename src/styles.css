@@ -1805,3 +1805,25 @@ button.filter-chip-main,
 .history-toggle[open] > summary {
   margin-bottom: 0.75rem;
 }
+
+/* "Marcar todos / Desmarcar todos" above a checkbox list, with the running count at the end */
+.checkbox-list-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin: 0.1rem 0 0.4rem;
+}
+
+.checkbox-list-bulk .muted {
+  margin-left: auto;
+}
+
+.icon-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.button:disabled[title] {
+  cursor: not-allowed;
+}
