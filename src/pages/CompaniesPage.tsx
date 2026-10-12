@@ -5,7 +5,7 @@ import { companiesApi, usersApi } from '../api/endpoints'
 import type { Company, User } from '../api/types'
 import { CheckboxList } from '../components/CheckboxList'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
-import { ErrorBanner, Field, Loading, Modal } from '../components/ui'
+import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
 import { useLoad } from '../lib/useLoad'
 
 /** Names of the users notified about a company's slips, for the list column. */
@@ -50,6 +50,7 @@ export function CompaniesPage() {
                 <th>Nome</th>
                 <th>Nome fantasia</th>
                 <th>CNPJ</th>
+                <th>Status</th>
                 <th>Usuários notificados</th>
                 <th aria-label="Ações" />
               </tr>
@@ -60,6 +61,11 @@ export function CompaniesPage() {
                   <td>{company.name}</td>
                   <td>{company.tradeName}</td>
                   <td>{company.formattedCnpj}</td>
+                  <td>
+                    <span className={`badge ${company.active ? 'badge-paid' : 'badge-archived'}`}>
+                      {company.active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
                   <td>{userNames(company.notifiedUserIds, users.data ?? [])}</td>
                   <td className="row-actions">
                     <IconButton label={`Editar ${company.name}`} onClick={() => setEditing(company)}>
@@ -73,7 +79,7 @@ export function CompaniesPage() {
               ))}
               {companies.data.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="muted empty-row">
+                  <td colSpan={6} className="muted empty-row">
                     Nenhuma empresa cadastrada ainda.
                   </td>
                 </tr>
@@ -107,6 +113,7 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
   const [name, setName] = useState(company?.name ?? '')
   const [tradeName, setTradeName] = useState(company?.tradeName ?? '')
   const [cnpj, setCnpj] = useState(company?.formattedCnpj ?? '')
+  const [active, setActive] = useState(company?.active ?? true)
   const [notifiedUserIds, setNotifiedUserIds] = useState((company?.notifiedUserIds ?? []).map(String))
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -122,6 +129,7 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
         name,
         cnpj,
         tradeName: tradeName.trim() || null,
+        active,
         notifiedUserIds: notifiedUserIds.map(Number),
       }
       if (company) await companiesApi.update(company.id, input)
@@ -146,6 +154,21 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
         </Field>
         <Field label="CNPJ" error={errors.cnpj} hint="Com ou sem pontuação; aceita o formato alfanumérico.">
           <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" required />
+        </Field>
+        <Field
+          label="Status"
+          group
+          hint={active ? undefined : 'Inativa: não aparece no cadastro de guia nem de parcelamento.'}
+        >
+          <Segmented
+            label="Status"
+            options={[
+              { value: 'active', label: 'Ativo' },
+              { value: 'inactive', label: 'Inativo' },
+            ]}
+            value={active ? 'active' : 'inactive'}
+            onChange={(value) => setActive(value === 'active')}
+          />
         </Field>
         <Field label="Usuários notificados" group>
           <CheckboxList

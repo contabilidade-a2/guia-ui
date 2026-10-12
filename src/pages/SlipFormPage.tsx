@@ -156,11 +156,17 @@ function SlipForm({ slipId, companies, slipTypes, installmentPlans, slip }: Slip
   const hasPlan = form.installmentPlanId !== ''
   const isInstallmentType = slipTypes.find((type) => String(type.id) === form.slipTypeId)?.installment ?? false
   const selectedPlan = installmentPlans.find((plan) => String(plan.id) === form.installmentPlanId)
-  // Active plans of the chosen company (all companies while none is chosen); the plan already picked always stays.
+  // Inactive companies aren't offered (the server refuses them too); the one this slip already has stays.
+  const ownCompanyId = slip ? String(slip.company.id) : null
+  const selectableCompanies = companies.filter((company) => company.active || String(company.id) === ownCompanyId)
+  const inactiveCompanyIds = new Set(companies.filter((company) => !company.active).map((company) => company.id))
+  // Active plans of the chosen company (all active companies while none is chosen); the plan already picked always stays.
   const selectablePlans = installmentPlans.filter(
     (plan) =>
       String(plan.id) === form.installmentPlanId ||
-      (plan.status === 'ACTIVE' && (form.companyId === '' || String(plan.company.id) === form.companyId)),
+      (plan.status === 'ACTIVE' &&
+        !inactiveCompanyIds.has(plan.company.id) &&
+        (form.companyId === '' || String(plan.company.id) === form.companyId)),
   )
 
   // Moving to an installment type clears the company, so every active plan can be picked (the plan then sets
@@ -260,7 +266,7 @@ function SlipForm({ slipId, companies, slipTypes, installmentPlans, slip }: Slip
           <Field label="Empresa" group error={errors.companyId} hint={hasPlan ? 'Vem do parcelamento.' : undefined}>
             <SearchableSelect
               label="Empresa"
-              options={companies.map((company) => ({ value: String(company.id), label: company.label }))}
+              options={selectableCompanies.map((company) => ({ value: String(company.id), label: company.label }))}
               value={form.companyId}
               onChange={(value) => set('companyId', value)}
               required

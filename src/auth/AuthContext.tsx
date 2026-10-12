@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       // Mirrors the server rules; the server remains the one that enforces them.
       isAdmin: role === 'ADMIN',
-      canManageCompanies: role === 'ADMIN' || role === 'FISCAL',
+      canManageCompanies: role === 'ADMIN' || role === 'FISCAL' || role === 'ACCOUNTING',
       canEditSlips: role === 'ADMIN' || role === 'FISCAL' || role === 'ACCOUNTING',
       canRegisterPayment: role === 'ADMIN' || role === 'FINANCIAL' || role === 'ACCOUNTING',
       canManageInstallmentPlans: role === 'ADMIN' || role === 'FISCAL' || role === 'ACCOUNTING',

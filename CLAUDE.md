@@ -41,6 +41,7 @@ O back-end (Render gratuito) hiberna após 15 minutos sem uso e leva de 2 a 3 mi
 - Rótulos em português para os enums (`PENDING` → "Pendente" etc.) ficam em `src/lib/format.ts`.
 - As mensagens de erro vêm prontas da API (`ProblemDetail.detail` e `errors` por campo); `src/api/client.ts` as transforma em `ApiError`. Não reescrever essas mensagens no front.
 - As permissões por perfil em `AuthContext` só escondem o que o usuário não pode fazer; quem garante a regra é o servidor.
+- Empresa inativa (`Company.active`) continua nas listas e nos filtros, mas sai das opções dos cadastros de guia e de parcelamento; o registro que já a usa continua mostrando-a ao ser editado. O servidor também recusa (422).
 - Datas `yyyy-MM-dd` são formatadas como texto, sem passar por `Date`, para não mudar de dia por fuso. "Hoje" é sempre o dia em `America/Sao_Paulo`.
 - O token JWT fica no `localStorage`; um 401 da API encerra a sessão.
 

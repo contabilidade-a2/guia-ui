@@ -37,6 +37,8 @@ export interface Company {
   cnpj: string
   formattedCnpj: string
   tradeName: string | null
+  /** An inactive company keeps its slips and plans, but isn't offered for new ones. */
+  active: boolean
   label: string
   createdAt: string
   updatedAt: string
@@ -48,6 +50,7 @@ export interface CompanyInput {
   name: string
   cnpj: string
   tradeName: string | null
+  active: boolean
   notifiedUserIds: number[]
 }
 

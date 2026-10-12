@@ -361,7 +361,10 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
         <Field label="Empresa" group error={errors.companyId}>
           <SearchableSelect
             label="Empresa"
-            options={companies.map((company) => ({ value: String(company.id), label: company.label }))}
+            // Inactive companies aren't offered (the server refuses them too); the one this plan already has stays.
+            options={companies
+              .filter((company) => company.active || company.id === plan?.company.id)
+              .map((company) => ({ value: String(company.id), label: company.label }))}
             value={companyId}
             onChange={setCompanyId}
             required
