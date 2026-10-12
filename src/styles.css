@@ -1827,3 +1827,71 @@ button.filter-chip-main,
 .button:disabled[title] {
   cursor: not-allowed;
 }
+
+/* ---------- back-end waking up (WakingNotice) ---------- */
+
+.waking-notice {
+  position: fixed;
+  z-index: 30;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 20px rgb(15 25 35 / 15%);
+}
+
+.waking-spinner {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: waking-spin 0.9s linear infinite;
+}
+
+@keyframes waking-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waking-spinner {
+    animation-duration: 3s;
+  }
+}
+
+/* ---------- usage metrics (UsagePage) ---------- */
+
+.usage-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.usage-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.usage-tile strong {
+  font-size: 1.5rem;
+}
+
+.usage-tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}

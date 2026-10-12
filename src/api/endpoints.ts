@@ -20,6 +20,7 @@ import type {
   SlipType,
   SlipTypeInput,
   SlipTypeGroup,
+  UsageSummary,
   User,
   UserInput,
 } from './types'
@@ -122,4 +123,9 @@ export const deletedSlipsApi = {
 export const calendarApi = {
   month: (year: number, month: number) => request<CalendarDay[]>('GET', `/api/calendar/${year}/${month}`),
   day: (date: string) => request<SlipTypeGroup[]>('GET', `/api/calendar/day/${date}`),
+}
+
+export const usageApi = {
+  /** `month` as `yyyy-MM`; the current month when empty. */
+  summary: (month: string) => request<UsageSummary>('GET', `/api/usage/summary${month ? `?month=${month}` : ''}`),
 }

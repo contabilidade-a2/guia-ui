@@ -23,7 +23,15 @@ npm run lint
 
 ## Agendamentos
 
-Não há workflows agendados neste repositório (só o `deploy.yml`). O keep-alive (`GET /health`) e a rotina diária (`POST /internal/jobs/daily`) são chamados pelo cron-job.org, configurado à mão; veja o `CLAUDE.md` e o README do `guia-service`. Motivo: a conta anterior no GitHub foi suspensa em 08/10/2026, provavelmente pelo ping de 5 em 5 minutos via Actions, e por isso nada agendado fica mais no GitHub.
+Não há workflows agendados neste repositório (só o `deploy.yml`). A rotina diária (`POST /internal/jobs/daily`) é chamada pelo cron-job.org, configurado à mão; veja o `CLAUDE.md` e o README do `guia-service`. O keep-alive foi removido (12/10/2026): não criar pings para manter o back-end acordado. Motivo: a conta anterior no GitHub foi suspensa em 08/10/2026, provavelmente pelo ping de 5 em 5 minutos via Actions, e por isso nada agendado fica mais no GitHub.
+
+## Back-end hibernando
+
+O back-end (Render gratuito) hiberna após 15 minutos sem uso e leva de 2 a 3 minutos para acordar. Tudo isso fica em `src/api/client.ts`:
+
+- Uma chamada sem resposta (ou com 502/503/504) é repetida sozinha a cada 5 s, por até 5 minutos, enquanto o `WakingNotice` (`components/ui.tsx`, montado no `App`) mostra "Iniciando o sistema, isso pode levar alguns instantes…". O aviso também aparece para qualquer chamada pendente há mais de 5 s.
+- Só se repete o que é seguro: todo `GET`, e qualquer chamada enquanto o back-end ainda não respondeu nada desde que a página abriu (ele está dormindo, então nada chegou lá). Depois disso, uma escrita que falha não é repetida, para não duplicar o registro.
+- Métrica de espera (pedido da usuária em 12/10/2026, para a decisão sobre a hospedagem): o tempo da primeira chamada de cada sessão do navegador (`sessionStorage`), e de qualquer chamada posterior repetida ou com 10 s ou mais, vai para `POST /api/usage/waits` assim que há um usuário logado. O resumo do mês aparece na tela "Uso" (`/usage`, só Administrador).
 
 ## Convenções
 

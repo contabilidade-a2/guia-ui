@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
+import { wakingStore } from '../api/client'
 import type { SendStatus, SlipStatus } from '../api/types'
 import { SEND_STATUS_LABELS, SLIP_STATUS_LABELS } from '../lib/format'
 
@@ -21,6 +22,18 @@ export function ErrorBanner({ message, onRetry }: { message: string | null; onRe
           Tentar novamente
         </button>
       )}
+    </div>
+  )
+}
+
+/** Shown over any screen while a call waits for the back-end to wake up (the call retries by itself). */
+export function WakingNotice() {
+  const waking = useSyncExternalStore(wakingStore.subscribe, wakingStore.getSnapshot)
+  if (!waking) return null
+  return (
+    <div className="waking-notice" role="status">
+      <span className="waking-spinner" aria-hidden="true" />
+      Iniciando o sistema, isso pode levar alguns instantes…
     </div>
   )
 }

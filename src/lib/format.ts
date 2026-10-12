@@ -37,6 +37,15 @@ export function formatMoney(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+/** `400` → `0,4 s`; `45000` → `45 s`; `150000` → `2 min 30 s`. */
+export function formatDuration(millis: number): string {
+  if (millis < 10_000) return `${(millis / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} s`
+  const seconds = Math.round(millis / 1000)
+  if (seconds < 60) return `${seconds} s`
+  const rest = seconds % 60
+  return rest === 0 ? `${Math.floor(seconds / 60)} min` : `${Math.floor(seconds / 60)} min ${rest} s`
+}
+
 /** Today in Brazil as `yyyy-MM-dd`, whatever the browser's time zone. */
 export function todayIso(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE }).format(new Date())

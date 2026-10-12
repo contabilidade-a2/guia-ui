@@ -238,3 +238,24 @@ export interface SlipTypeGroup {
   slipType: SlipType
   slips: CalendarSlip[]
 }
+
+/** Usage metrics of one month, kept to decide about the hosting. Durations in milliseconds; null without data. */
+export interface UsageSummary {
+  /** `yyyy-MM` */
+  month: string
+  daysWithUse: number
+  totalCalls: number
+  distinctUsers: number
+  startups: number
+  averageStartupMillis: number | null
+  maxStartupMillis: number | null
+  waits: number
+  averageWaitMillis: number | null
+  maxWaitMillis: number | null
+  /** Waits of 10 seconds or more. */
+  longWaits: number
+  averageLongWaitMillis: number | null
+  /** Busiest first. `hour` is 0 to 23, in Brazil; `days` is in how many days that hour had calls. */
+  peakHours: { hour: number; calls: number; days: number }[]
+  days: { date: string; calls: number; users: number; startups: number }[]
+}

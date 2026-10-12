@@ -39,6 +39,7 @@ export function Layout() {
                 <NavLink to="/slip-types">Tipos de guia</NavLink>
                 <NavLink to="/users">Usuários</NavLink>
                 <NavLink to="/deleted-slips">Guias excluídas</NavLink>
+                <NavLink to="/usage">Uso</NavLink>
               </>
             )}
           </nav>

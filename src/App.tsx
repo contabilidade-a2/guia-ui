@@ -1,7 +1,7 @@
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
-import { Loading } from './components/ui'
+import { Loading, WakingNotice } from './components/ui'
 import { CalendarPage } from './pages/CalendarPage'
 import { CompaniesPage } from './pages/CompaniesPage'
 import { DeletedSlipsPage } from './pages/DeletedSlipsPage'
@@ -12,6 +12,7 @@ import { SlipDetailPage } from './pages/SlipDetailPage'
 import { SlipFormPage } from './pages/SlipFormPage'
 import { SlipListPage } from './pages/SlipListPage'
 import { SlipTypesPage } from './pages/SlipTypesPage'
+import { UsagePage } from './pages/UsagePage'
 import { UsersPage } from './pages/UsersPage'
 
 function RequireAuth() {
@@ -53,6 +54,7 @@ function RequireInstallmentPlanManager() {
 export default function App() {
   return (
     <AuthProvider>
+      <WakingNotice />
       <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -76,6 +78,7 @@ export default function App() {
                 <Route path="/slip-types" element={<SlipTypesPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/deleted-slips" element={<DeletedSlipsPage />} />
+                <Route path="/usage" element={<UsagePage />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
