@@ -6,7 +6,7 @@ import type { User, UserRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { CheckboxList } from '../components/CheckboxList'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
-import { ErrorBanner, Field, Loading, Modal } from '../components/ui'
+import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
 import { ROLE_LABELS, formatDateTime } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 
@@ -187,10 +187,18 @@ function UserForm({ user, isSelf, onClose, onSaved }: UserFormProps) {
             clearAllText="Desmarcar todas"
           />
         </Field>
-        <label className="checkbox">
-          <input type="checkbox" checked={active} disabled={isSelf} onChange={(e) => setActive(e.target.checked)} />
-          Ativo {isSelf && <span className="muted small">(você não pode desativar o próprio usuário)</span>}
-        </label>
+        <Field label="Status" group hint={isSelf ? 'Você não pode desativar o próprio usuário.' : undefined}>
+          <Segmented
+            label="Status"
+            options={[
+              { value: 'active', label: 'Ativo' },
+              { value: 'inactive', label: 'Inativo' },
+            ]}
+            value={active ? 'active' : 'inactive'}
+            onChange={(value) => setActive(value === 'active')}
+            disabled={isSelf}
+          />
+        </Field>
         <div className="form-actions">
           <button type="button" className="button" onClick={onClose}>
             Cancelar
