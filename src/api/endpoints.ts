@@ -1,5 +1,5 @@
 import { firstDayOfMonth, lastDayOfMonth } from '../lib/format'
-import { request } from './client'
+import { downloadFile, request } from './client'
 import type {
   CalendarDay,
   Company,
@@ -20,6 +20,13 @@ import type {
   SlipType,
   SlipTypeInput,
   SlipTypeGroup,
+  AuditEntry,
+  ChartAccount,
+  ChartAccountInput,
+  RegistryConflict,
+  RegistryImportSummary,
+  Supplier,
+  SupplierInput,
   UsageSummary,
   User,
   UserInput,
@@ -128,4 +135,47 @@ export const calendarApi = {
 export const usageApi = {
   /** `month` as `yyyy-MM`; the current month when empty. */
   summary: (month: string) => request<UsageSummary>('GET', `/api/usage/summary${month ? `?month=${month}` : ''}`),
+}
+
+function fileForm(file: File): FormData {
+  const form = new FormData()
+  form.append('file', file)
+  return form
+}
+
+function query(params: Record<string, string | number | boolean | null | undefined>): string {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') search.set(key, String(value))
+  })
+  return search.toString()
+}
+
+export const accountingApi = {
+  audit: (page: number, size: number) =>
+    request<Page<AuditEntry>>('GET', `/api/accounting/audit?page=${page}&size=${size}`),
+
+  chartAccounts: (filters: { text: string; pendingForCompanyId: string }, page: number, size: number) =>
+    request<Page<ChartAccount>>('GET', `/api/accounting/chart-accounts?${query({ ...filters, page, size })}`),
+  createChartAccount: (input: ChartAccountInput) => request<ChartAccount>('POST', '/api/accounting/chart-accounts', input),
+  updateChartAccount: (id: number, input: ChartAccountInput) =>
+    request<ChartAccount>('PUT', `/api/accounting/chart-accounts/${id}`, input),
+  removeChartAccount: (id: number) => request<void>('DELETE', `/api/accounting/chart-accounts/${id}`),
+  importChartAccounts: (file: File) =>
+    request<RegistryImportSummary>('POST', '/api/accounting/chart-accounts/import', fileForm(file)),
+  exportChartAccounts: () => downloadFile('/api/accounting/chart-accounts/export', 'depara_plano_de_contas.csv'),
+
+  suppliers: (filters: { name: string; document: string; companyCode: string }, page: number, size: number) =>
+    request<Page<Supplier>>('GET', `/api/accounting/suppliers?${query({ ...filters, page, size })}`),
+  createSupplier: (input: SupplierInput) => request<Supplier>('POST', '/api/accounting/suppliers', input),
+  updateSupplier: (id: number, input: SupplierInput) => request<Supplier>('PUT', `/api/accounting/suppliers/${id}`, input),
+  removeSupplier: (id: number) => request<void>('DELETE', `/api/accounting/suppliers/${id}`),
+  importSuppliers: (file: File) => request<RegistryImportSummary>('POST', '/api/accounting/suppliers/import', fileForm(file)),
+  exportSuppliers: () => downloadFile('/api/accounting/suppliers/export', 'fornecedores.csv'),
+
+  conflicts: (onlyOpen: boolean, page: number, size: number) =>
+    request<Page<RegistryConflict>>('GET', `/api/accounting/conflicts?${query({ onlyOpen, page, size })}`),
+  exportConflicts: (onlyOpen: boolean) =>
+    downloadFile(`/api/accounting/conflicts/export?onlyOpen=${onlyOpen}`, 'conflitos_de_cadastro.csv'),
+  markConflictReviewed: (id: number) => request<void>('PUT', `/api/accounting/conflicts/${id}/reviewed`),
 }

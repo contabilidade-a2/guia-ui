@@ -97,12 +97,14 @@ async function send(method: string, path: string, body?: unknown): Promise<Respo
   const headers: Record<string, string> = {}
   const token = tokenStore.get()
   if (token) headers.Authorization = `Bearer ${token}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // A FormData (file upload) sets its own multipart content type.
+  const form = body instanceof FormData
+  if (body !== undefined && !form) headers['Content-Type'] = 'application/json'
   try {
     return await fetch(BASE_URL + path, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
     })
   } catch {
     return null
@@ -157,6 +159,21 @@ async function parse<T>(response: Response, path: string): Promise<T> {
   }
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
+}
+
+/** Downloads a file the API returns (e.g. a CSV), named as the server says or [fallbackName]. */
+export async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const response = await send('GET', path)
+  if (!response) throw new ApiError(0, CONNECTION_MESSAGE)
+  if (!response.ok) await parse(response, path)
+  const blob = await response.blob()
+  const name = /filename="?([^";]+)"?/.exec(response.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export function errorMessage(error: unknown): string {

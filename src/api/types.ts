@@ -44,6 +44,19 @@ export interface Company {
   updatedAt: string
   /** Ids of the users notified about this company's slips. */
   notifiedUserIds: number[]
+  accounting: AccountingSettings
+}
+
+/** What the accounting import needs about a company; only the administrator changes it. */
+export interface AccountingSettings {
+  /** How the company is named in the Depara/Fornecedores spreadsheets' columns. */
+  shortName: string | null
+  /** Domínio "Código Matriz/Filial". */
+  matrixBranchCode: string | null
+  /** Account debited when this company pays for another one of the group. */
+  intercompanyAccount: string | null
+  /** "Unidade Negocio" codes of the export, without leading zeros, in numeric order. */
+  businessUnits: string[]
 }
 
 export interface CompanyInput {
@@ -52,6 +65,8 @@ export interface CompanyInput {
   tradeName: string | null
   active: boolean
   notifiedUserIds: number[]
+  /** Only sent by the administrator; absent keeps what the company has. */
+  accounting?: AccountingSettings
 }
 
 export interface CompanyRef {
@@ -262,3 +277,106 @@ export interface UsageSummary {
   peakHours: { hour: number; calls: number; days: number }[]
   days: { date: string; calls: number; users: number; startups: number }[]
 }
+
+export type AuditAction =
+  | 'COMPANY_ACCOUNTING_UPDATED'
+  | 'CHART_ACCOUNT_CREATED'
+  | 'CHART_ACCOUNT_UPDATED'
+  | 'CHART_ACCOUNT_DELETED'
+  | 'SUPPLIER_CREATED'
+  | 'SUPPLIER_UPDATED'
+  | 'SUPPLIER_DELETED'
+  | 'REGISTRY_IMPORTED'
+  | 'CONFLICT_REVIEWED'
+  | 'IMPORT_ANALYZED'
+  | 'IMPORT_GENERATED'
+
+/** Something done in the accounting module. */
+export interface AuditEntry {
+  occurredAt: string
+  userName: string
+  action: AuditAction
+  entity: string
+  entityId: string | null
+  details: string | null
+}
+
+/** A company's mapping of a source account; a company left out of the list is pending. */
+export interface ChartAccountMapping {
+  companyId: number
+  domainCode: string | null
+  /** The "0" of the spreadsheet: deliberately left out for that company. */
+  ignored: boolean
+}
+
+/** A line of the Depara (chart of accounts). */
+export interface ChartAccount {
+  id: number
+  sourceCode: string
+  ledgerAccount: string | null
+  description: string
+  level: number | null
+  accountType: string | null
+  resultType: string | null
+  mappings: ChartAccountMapping[]
+  updatedAt: string
+}
+
+export interface ChartAccountInput {
+  sourceCode: string
+  ledgerAccount: string | null
+  description: string
+  accountType: string | null
+  resultType: string | null
+  mappings: ChartAccountMapping[]
+}
+
+export interface SupplierAccount {
+  companyId: number
+  domainAccount: string
+}
+
+/** A line of the Fornecedores registry. Several suppliers may share a company code. */
+export interface Supplier {
+  id: number
+  companyCode: string
+  name: string
+  /** CPF or CNPJ digits. */
+  document: string | null
+  accounts: SupplierAccount[]
+  updatedAt: string
+}
+
+export interface SupplierInput {
+  companyCode: string
+  name: string
+  document: string | null
+  accounts: SupplierAccount[]
+}
+
+/** What a bulk load of a registry did. */
+export interface RegistryImportSummary {
+  rows: number
+  created: number
+  filled: number
+  unchanged: number
+  conflicts: number
+  skipped: number
+}
+
+export type RegistryBase = 'CHART_ACCOUNT' | 'SUPPLIER'
+
+/** A value a load did not write because the record already had a different one. */
+export interface RegistryConflict {
+  id: number
+  base: RegistryBase
+  recordKey: string
+  companyName: string | null
+  currentValue: string | null
+  suggestedValue: string | null
+  source: string
+  createdAt: string
+  userName: string | null
+  reviewed: boolean
+}
+
