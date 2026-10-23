@@ -33,6 +33,10 @@ O back-end (Render gratuito) hiberna após 15 minutos sem uso e leva de 2 a 3 mi
 - Só se repete o que é seguro: todo `GET`, e qualquer chamada enquanto o back-end ainda não respondeu nada desde que a página abriu (ele está dormindo, então nada chegou lá). Depois disso, uma escrita que falha não é repetida, para não duplicar o registro.
 - Métrica de espera (pedido da usuária em 12/10/2026, para a decisão sobre a hospedagem): o tempo da primeira chamada de cada sessão do navegador (`sessionStorage`), e de qualquer chamada posterior repetida ou com 10 s ou mais, vai para `POST /api/usage/waits` assim que há um usuário logado. O resumo do mês aparece na tela "Uso" (`/usage`, só Administrador).
 
+## Contabilidade (importação contábil, em desenvolvimento)
+
+Área só do Administrador (menu "Contabilidade", rota `/accounting`, abas em `AccountingPage`): Plano de contas (Depara), Fornecedores, Bases e conflitos (carga e exportação por CSV) e Registro de alterações. O cadastro de empresa ganhou, só para o Administrador, a seção "Importação contábil" (nome curto, Código Matriz/Filial, conta para pagamentos de outras empresas e unidades de negócio, que aceitam intervalos como `1-26`). As colunas de empresa nas telas são as empresas com nome curto. Upload e download de arquivos passam por `request` (com `FormData`) e `downloadFile` em `src/api/client.ts`. **Nenhum nome de empresa no código**: tudo vem do cadastro. Contexto completo no `CLAUDE.md` do `guia-service`.
+
 ## Convenções
 
 - **Este repositório é público** (exigência do GitHub Pages gratuito); o `guia-service` é privado. Nada de credenciais, URLs reais de produção, nomes de empresas ou de pessoas em código, documentação, exemplos ou mensagens de commit.

@@ -6,6 +6,8 @@ import type { Company, User } from '../api/types'
 import { CheckboxList } from '../components/CheckboxList'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
+import { useAuth } from '../auth/AuthContext'
+import { formatBusinessUnits, parseBusinessUnits } from '../lib/businessUnits'
 import { useLoad } from '../lib/useLoad'
 
 /** Names of the users notified about a company's slips, for the list column. */
@@ -115,6 +117,12 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
   const [cnpj, setCnpj] = useState(company?.formattedCnpj ?? '')
   const [active, setActive] = useState(company?.active ?? true)
   const [notifiedUserIds, setNotifiedUserIds] = useState((company?.notifiedUserIds ?? []).map(String))
+  // Accounting import settings: shown to and sent by the administrator only (the server ignores anyone else's).
+  const { isAdmin } = useAuth()
+  const [shortName, setShortName] = useState(company?.accounting.shortName ?? '')
+  const [matrixBranchCode, setMatrixBranchCode] = useState(company?.accounting.matrixBranchCode ?? '')
+  const [intercompanyAccount, setIntercompanyAccount] = useState(company?.accounting.intercompanyAccount ?? '')
+  const [businessUnits, setBusinessUnits] = useState(formatBusinessUnits(company?.accounting.businessUnits ?? []))
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -124,6 +132,12 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
     setSubmitting(true)
     setError(null)
     setErrors({})
+    const units = parseBusinessUnits(businessUnits)
+    if (isAdmin && units === null) {
+      setErrors({ businessUnits: 'Use números separados por vírgula, ou intervalos como 1-26.' })
+      setSubmitting(false)
+      return
+    }
     try {
       const input = {
         name,
@@ -131,6 +145,14 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
         tradeName: tradeName.trim() || null,
         active,
         notifiedUserIds: notifiedUserIds.map(Number),
+        accounting: isAdmin
+          ? {
+              shortName: shortName.trim() || null,
+              matrixBranchCode: matrixBranchCode.trim() || null,
+              intercompanyAccount: intercompanyAccount.trim() || null,
+              businessUnits: units ?? [],
+            }
+          : undefined,
       }
       if (company) await companiesApi.update(company.id, input)
       else await companiesApi.create(input)
@@ -178,6 +200,37 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
             emptyText="Nenhum usuário cadastrado."
           />
         </Field>
+        {isAdmin && (
+          <fieldset className="form-section">
+            <legend>Importação contábil</legend>
+            <div className="form-row">
+              <Field label="Nome curto" hint="Como a empresa aparece nas colunas do Depara e dos Fornecedores.">
+                <input value={shortName} onChange={(e) => setShortName(e.target.value)} maxLength={40} />
+              </Field>
+              <Field label="Código Matriz/Filial" hint="Do Domínio. Sem ele, o arquivo não é gerado.">
+                <input
+                  inputMode="numeric"
+                  value={matrixBranchCode}
+                  onChange={(e) => setMatrixBranchCode(e.target.value.replace(/\D/g, ''))}
+                  maxLength={20}
+                />
+              </Field>
+            </div>
+            <div className="form-row">
+              <Field label="Conta para pagamentos de outras empresas" hint="Usada quando esta empresa paga por outra do grupo.">
+                <input
+                  inputMode="numeric"
+                  value={intercompanyAccount}
+                  onChange={(e) => setIntercompanyAccount(e.target.value.replace(/\D/g, ''))}
+                  maxLength={20}
+                />
+              </Field>
+              <Field label="Unidades de negócio" error={errors.businessUnits} hint="Separadas por vírgula; aceita intervalos, como 1-26.">
+                <input value={businessUnits} onChange={(e) => setBusinessUnits(e.target.value)} />
+              </Field>
+            </div>
+          </fieldset>
+        )}
         <div className="form-actions">
           <button type="button" className="button" onClick={onClose}>
             Cancelar

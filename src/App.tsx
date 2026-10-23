@@ -2,7 +2,12 @@ import { HashRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { Loading, WakingNotice } from './components/ui'
+import { AccountingAuditPage } from './pages/AccountingAuditPage'
+import { AccountingPage } from './pages/AccountingPage'
 import { CalendarPage } from './pages/CalendarPage'
+import { ChartAccountsPage } from './pages/ChartAccountsPage'
+import { RegistriesPage } from './pages/RegistriesPage'
+import { SuppliersPage } from './pages/SuppliersPage'
 import { CompaniesPage } from './pages/CompaniesPage'
 import { DeletedSlipsPage } from './pages/DeletedSlipsPage'
 import { InstallmentPlansPage } from './pages/InstallmentPlansPage'
@@ -79,6 +84,13 @@ export default function App() {
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/deleted-slips" element={<DeletedSlipsPage />} />
                 <Route path="/usage" element={<UsagePage />} />
+                <Route path="/accounting" element={<AccountingPage />}>
+                  <Route index element={<Navigate to="/accounting/chart-accounts" replace />} />
+                  <Route path="chart-accounts" element={<ChartAccountsPage />} />
+                  <Route path="suppliers" element={<SuppliersPage />} />
+                  <Route path="registries" element={<RegistriesPage />} />
+                  <Route path="audit" element={<AccountingAuditPage />} />
+                </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

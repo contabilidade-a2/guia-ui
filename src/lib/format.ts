@@ -1,4 +1,4 @@
-import type { BrazilianState, HistoryEventType, InstallmentOrigin, InstallmentStatus, SendStatus, SlipStatus, UserRole } from '../api/types'
+import type { AuditAction, BrazilianState, HistoryEventType, InstallmentOrigin, InstallmentStatus, SendStatus, SlipStatus, UserRole } from '../api/types'
 
 const TIME_ZONE = 'America/Sao_Paulo'
 
@@ -98,6 +98,20 @@ export const WEEKDAY_FULL_NAMES = [
 
 /** Shared by the list and the details screen. */
 export const DELETE_SLIP_CONFIRMATION = 'Você tem certeza que deseja excluir?'
+
+export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
+  COMPANY_ACCOUNTING_UPDATED: 'Dados contábeis da empresa',
+  CHART_ACCOUNT_CREATED: 'Conta cadastrada',
+  CHART_ACCOUNT_UPDATED: 'Conta alterada',
+  CHART_ACCOUNT_DELETED: 'Conta excluída',
+  SUPPLIER_CREATED: 'Fornecedor cadastrado',
+  SUPPLIER_UPDATED: 'Fornecedor alterado',
+  SUPPLIER_DELETED: 'Fornecedor excluído',
+  REGISTRY_IMPORTED: 'Carga de base',
+  CONFLICT_REVIEWED: 'Conflito revisado',
+  IMPORT_ANALYZED: 'Importação analisada',
+  IMPORT_GENERATED: 'Arquivo gerado',
+}
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   FISCAL: 'Fiscal',
