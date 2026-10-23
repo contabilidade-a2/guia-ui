@@ -166,7 +166,7 @@ function SlipDetailView({ slipId }: { slipId: number }) {
                 <dd>{slip.installmentNumber ?? '—'}</dd>
               </div>
               <div>
-                <dt>Número Cigam</dt>
+                <dt>Empresa Cigam</dt>
                 <dd>{slip.cigamNumber ?? '—'}</dd>
               </div>
               <div>

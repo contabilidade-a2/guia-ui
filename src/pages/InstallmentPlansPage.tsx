@@ -127,7 +127,7 @@ export function InstallmentPlansPage() {
             placeholder="Completo ou parcial"
           />
         </Field>
-        <Field label="Número Cigam">
+        <Field label="Empresa Cigam">
           <input
             inputMode="numeric"
             maxLength={20}
@@ -188,7 +188,7 @@ export function InstallmentPlansPage() {
                 <th>Origem</th>
                 <th>UF</th>
                 <th>Empresa</th>
-                <th>Nº Cigam</th>
+                <th>Empresa Cigam</th>
                 <th>Nº parcelas</th>
                 <th>Status</th>
                 <th aria-label="Ações" />
@@ -371,7 +371,7 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
           />
         </Field>
         <div className="form-row">
-          <Field label="Número Cigam" error={errors.cigamNumber}>
+          <Field label="Empresa Cigam" error={errors.cigamNumber}>
             <input
               inputMode="numeric"
               maxLength={20}

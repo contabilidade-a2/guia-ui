@@ -274,7 +274,7 @@ function DeletedSlipModal({ slip, onRestore, onClose }: DeletedSlipModalProps) {
         <dd>{formatMonth(slip.competenceDate)}</dd>
         <dt>Vencimento</dt>
         <dd>{formatDate(slip.dueDate)}</dd>
-        <dt>Número Cigam</dt>
+        <dt>Empresa Cigam</dt>
         <dd>{slip.cigamNumber ?? '—'}</dd>
         <dt>Enviada em</dt>
         <dd>

@@ -277,7 +277,7 @@ function SlipForm({ slipId, companies, slipTypes, installmentPlans, slip }: Slip
         <Field
           label="Assunto"
           error={errors.subject}
-          hint={hasPlan ? 'Empresa, assunto, origem e número Cigam vêm do parcelamento.' : undefined}
+          hint={hasPlan ? 'Empresa, assunto, origem e Empresa Cigam vêm do parcelamento.' : undefined}
         >
           <input
             value={form.subject}
@@ -292,7 +292,7 @@ function SlipForm({ slipId, companies, slipTypes, installmentPlans, slip }: Slip
             <Field label="Origem">
               <input value={form.origin} disabled />
             </Field>
-            <Field label="Número Cigam" error={errors.cigamNumber}>
+            <Field label="Empresa Cigam" error={errors.cigamNumber}>
               <input value={form.cigamNumber} disabled />
             </Field>
             <Field
