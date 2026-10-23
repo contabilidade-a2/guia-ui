@@ -9,7 +9,7 @@ import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge } from '../components/ui'
 import { errorMessage } from '../api/client'
 import type { Page, SlipSummary } from '../api/types'
-import { DELETE_SLIP_CONFIRMATION, SLIP_STATUS_LABELS, formatDate, formatInstantDate } from '../lib/format'
+import { DELETE_SLIP_CONFIRMATION, SLIP_STATUS_LABELS, formatDate, formatInstantDate, formatMoney } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 
 const PAGE_SIZE = 20
@@ -173,6 +173,7 @@ export function SlipListPage() {
                   <th>Envio</th>
                   <th>Enviada em</th>
                   <th>Vencimento</th>
+                  <th className="numeric">Valor</th>
                   <th>Status</th>
                   <th aria-label="Ações" />
                 </tr>
@@ -192,6 +193,7 @@ export function SlipListPage() {
                     </td>
                     <td className="muted">{formatInstantDate(slip.sentAt)}</td>
                     <td>{formatDate(slip.dueDate)}</td>
+                    <td className="numeric">{formatMoney(slip.amount)}</td>
                     <td>
                       <SlipStatusBadge status={slip.status} />
                     </td>
@@ -219,7 +221,7 @@ export function SlipListPage() {
                 ))}
                 {result.items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="muted empty-row">
+                    <td colSpan={8} className="muted empty-row">
                       {nothingSelected
                         ? 'Marque ao menos uma opção em cada filtro de seleção.'
                         : hasFilters
