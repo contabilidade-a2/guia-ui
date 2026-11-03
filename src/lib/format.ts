@@ -110,6 +110,7 @@ export const ORIGIN_LABELS: Record<InstallmentOrigin, string> = {
   SEFAZ: 'SEFAZ',
   ECAC: 'ECAC',
   PGFN: 'PGFN',
+  SN: 'SN',
 }
 
 export const INSTALLMENT_STATUS_LABELS: Record<InstallmentStatus, string> = {

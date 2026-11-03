@@ -72,7 +72,8 @@ export interface SlipTypeInput {
   installment: boolean
 }
 
-export type InstallmentOrigin = 'SEFAZ' | 'ECAC' | 'PGFN'
+/** SN = Simples Nacional: no plan number, at most one per company. */
+export type InstallmentOrigin = 'SEFAZ' | 'ECAC' | 'PGFN' | 'SN'
 
 /** Only ACTIVE plans can be picked for a new slip. */
 export type InstallmentStatus = 'ACTIVE' | 'RESCINDED' | 'SETTLED'
@@ -82,7 +83,7 @@ export type BrazilianState =
 
 export interface InstallmentPlan {
   id: number
-  /** Null for the Simples Nacional plan, which has no number. */
+  /** Null for the Simples Nacional (SN) plan, which has no number. */
   number: string | null
   origin: InstallmentOrigin
   /** Only SEFAZ plans have a state (UF). */
@@ -95,8 +96,6 @@ export interface InstallmentPlan {
   status: InstallmentStatus
   createdAt: string
   updatedAt: string
-  /** An ECAC plan of the Simples Nacional: no number, at most one per company. */
-  simplesNacional: boolean
 }
 
 export interface InstallmentPlanInput {
@@ -107,7 +106,6 @@ export interface InstallmentPlanInput {
   companyId: number
   installmentCount: number
   status: InstallmentStatus
-  simplesNacional: boolean
 }
 
 export interface InstallmentPlanFilters {

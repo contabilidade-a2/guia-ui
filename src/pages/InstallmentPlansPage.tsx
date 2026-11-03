@@ -198,7 +198,7 @@ export function InstallmentPlansPage() {
               {plans.data.items.map((plan) => (
                 <tr key={plan.id}>
                   <td className="cell-title numeric-text">
-                    {plan.simplesNacional ? <span className="badge badge-sent">Simples Nacional</span> : plan.number}
+                    {plan.origin === 'SN' ? <span className="muted">Simples Nacional</span> : plan.number}
                   </td>
                   <td>{ORIGIN_LABELS[plan.origin]}</td>
                   <td>{plan.state ?? '—'}</td>
@@ -285,8 +285,8 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
   const [companyId, setCompanyId] = useState(plan ? String(plan.company.id) : '')
   const [installmentCount, setInstallmentCount] = useState(plan ? String(plan.installmentCount) : '')
   const [status, setStatus] = useState<InstallmentStatus>(plan?.status ?? 'ACTIVE')
-  // Simples Nacional: an ECAC plan without a number (the server keeps it to one per company).
-  const [simplesNacional, setSimplesNacional] = useState(plan?.simplesNacional ?? false)
+  // SN (Simples Nacional) plans have no number; the server keeps them to one per company.
+  const simplesNacional = origin === 'SN'
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -305,7 +305,6 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
         companyId: Number(companyId),
         installmentCount: Number(installmentCount),
         status,
-        simplesNacional,
       }
       if (plan) await installmentPlansApi.update(plan.id, input)
       else await installmentPlansApi.create(input)
@@ -334,7 +333,12 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
           </Field>
         )}
         <div className="form-row">
-          <Field label="Origem" group error={errors.origin}>
+          <Field
+            label="Origem"
+            group
+            error={errors.origin}
+            hint={simplesNacional ? 'Simples Nacional: parcelamento sem número.' : undefined}
+          >
             <Segmented
               label="Origem"
               strong
@@ -342,9 +346,8 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
               value={origin}
               onChange={(value) => {
                 setOrigin(value)
-                // Only SEFAZ plans have a UF, and only ECAC plans may be of the Simples Nacional.
+                // Only SEFAZ plans have a UF.
                 if (value !== 'SEFAZ') setState('')
-                if (value !== 'ECAC') setSimplesNacional(false)
               }}
             />
             {/* the buttons can't be `required`: this hidden input makes the browser ask for an origin */}
@@ -366,19 +369,6 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
             />
           </Field>
         </div>
-        {origin === 'ECAC' && (
-          <Field label="Simples Nacional" group hint={simplesNacional ? 'Sem número; só um por empresa.' : undefined}>
-            <Segmented
-              label="Simples Nacional"
-              options={[
-                { value: 'no', label: 'Não' },
-                { value: 'yes', label: 'Sim' },
-              ]}
-              value={simplesNacional ? 'yes' : 'no'}
-              onChange={(value) => setSimplesNacional(value === 'yes')}
-            />
-          </Field>
-        )}
         <Field label="Empresa" group error={errors.companyId}>
           <SearchableSelect
             label="Empresa"
@@ -455,9 +445,9 @@ function planCount(total: number, active: number | null): string {
   return `${text} · ${active} ${active === 1 ? 'ativo' : 'ativos'}`
 }
 
-/** Same as the server's `InstallmentPlan.subject`: `Parcelamento SEFAZ SP 123`, `Parcelamento PGFN 123`, or `Parcelamento 123` on ECAC. */
 const SIMPLES_NACIONAL_SUBJECT = 'Parcelamento Simples Nacional'
 
+/** Same as the server's `InstallmentPlan.subject`: `Parcelamento SEFAZ SP 123`, `Parcelamento PGFN 123`, or `Parcelamento 123` on ECAC. */
 function planSubject(number: string, origin: InstallmentOrigin | '', state: BrazilianState | ''): string {
   const parts = ['Parcelamento', origin === 'ECAC' ? '' : origin, origin === 'SEFAZ' ? state : '', number]
   return parts.filter(Boolean).join(' ')
