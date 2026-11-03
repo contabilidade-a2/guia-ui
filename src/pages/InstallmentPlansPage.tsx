@@ -367,10 +367,17 @@ function InstallmentPlanForm({ plan, companies, onClose, onSaved }: InstallmentP
           </Field>
         </div>
         {origin === 'ECAC' && (
-          <label className="checkbox">
-            <input type="checkbox" checked={simplesNacional} onChange={(e) => setSimplesNacional(e.target.checked)} />
-            Parcelamento do Simples Nacional <span className="muted small">(sem número; um por empresa)</span>
-          </label>
+          <Field label="Simples Nacional" group hint={simplesNacional ? 'Sem número; só um por empresa.' : undefined}>
+            <Segmented
+              label="Simples Nacional"
+              options={[
+                { value: 'no', label: 'Não' },
+                { value: 'yes', label: 'Sim' },
+              ]}
+              value={simplesNacional ? 'yes' : 'no'}
+              onChange={(value) => setSimplesNacional(value === 'yes')}
+            />
+          </Field>
         )}
         <Field label="Empresa" group error={errors.companyId}>
           <SearchableSelect
