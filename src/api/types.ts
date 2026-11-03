@@ -82,11 +82,12 @@ export type BrazilianState =
 
 export interface InstallmentPlan {
   id: number
-  number: string
+  /** Null for the Simples Nacional plan, which has no number. */
+  number: string | null
   origin: InstallmentOrigin
   /** Only SEFAZ plans have a state (UF). */
   state: BrazilianState | null
-  /** `Parcelamento SEFAZ SP 123`, `Parcelamento PGFN 123` or `Parcelamento 123` (ECAC): the subject of its slips. */
+  /** `Parcelamento SEFAZ SP 123`, `Parcelamento PGFN 123`, `Parcelamento 123` (ECAC) or `Parcelamento Simples Nacional`. */
   subject: string
   cigamNumber: string
   company: CompanyRef
@@ -94,16 +95,19 @@ export interface InstallmentPlan {
   status: InstallmentStatus
   createdAt: string
   updatedAt: string
+  /** An ECAC plan of the Simples Nacional: no number, at most one per company. */
+  simplesNacional: boolean
 }
 
 export interface InstallmentPlanInput {
-  number: string
+  number: string | null
   origin: InstallmentOrigin
   state: BrazilianState | null
   cigamNumber: string
   companyId: number
   installmentCount: number
   status: InstallmentStatus
+  simplesNacional: boolean
 }
 
 export interface InstallmentPlanFilters {
