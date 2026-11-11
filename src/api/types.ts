@@ -264,3 +264,15 @@ export interface UsageSummary {
   peakHours: { hour: number; calls: number; days: number }[]
   days: { date: string; calls: number; users: number; startups: number }[]
 }
+
+/** A column picked to order a list (the server sorts every page); `null` keeps the list's default order. */
+export interface SortState<F extends string> {
+  field: F
+  ascending: boolean
+}
+
+/** Status, send status and subject are not sortable: their codes don't sort like their labels. */
+export type SlipSortField = 'SLIP_TYPE' | 'SENT_AT' | 'DUE_DATE' | 'AMOUNT'
+
+/** Origin, UF and status are not sortable, for the same reason. */
+export type InstallmentPlanSortField = 'NUMBER' | 'COMPANY' | 'CIGAM_NUMBER' | 'INSTALLMENT_COUNT'

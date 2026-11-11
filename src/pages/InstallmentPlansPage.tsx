@@ -8,14 +8,16 @@ import type {
   InstallmentOrigin,
   InstallmentPlan,
   InstallmentPlanFilters,
+  InstallmentPlanSortField,
   InstallmentStatus,
   Page,
+  SortState,
 } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { DeleteIcon, EditIcon, IconButton, PlusIcon } from '../components/icons'
 import { MultiSelect } from '../components/MultiSelect'
 import { SearchableSelect } from '../components/SearchableSelect'
-import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
+import { ErrorBanner, Field, Loading, Modal, Segmented, SortableHeader } from '../components/ui'
 import { INSTALLMENT_STATUS_LABELS, ORIGIN_LABELS, STATE_LABELS } from '../lib/format'
 import { onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
@@ -34,6 +36,7 @@ export function InstallmentPlansPage() {
   const { canManageInstallmentPlans } = useAuth()
   const [filters, setFilters] = useState<InstallmentPlanFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
+  const [sort, setSort] = useState<SortState<InstallmentPlanSortField> | null>(null)
   // Typed freely; only applied to the filter after a short pause, so each keystroke doesn't fire a request.
   const [numberInput, setNumberInput] = useState('')
   const [cigamInput, setCigamInput] = useState('')
@@ -44,8 +47,8 @@ export function InstallmentPlansPage() {
     () =>
       nothingSelected
         ? Promise.resolve<Page<InstallmentPlan>>({ items: [], page: 0, size: PAGE_SIZE, totalItems: 0, totalPages: 0 })
-        : installmentPlansApi.search(filters, page, PAGE_SIZE),
-    [filters, page],
+        : installmentPlansApi.search(filters, page, PAGE_SIZE, sort),
+    [filters, page, sort],
   )
   // How many of the listed plans are active, for the subtitle; only needed while the status filter shows all.
   const activeCount = useLoad(
@@ -58,6 +61,12 @@ export function InstallmentPlansPage() {
   /** `null` = closed, `'new'` = creating, otherwise the plan being edited. */
   const [editing, setEditing] = useState<InstallmentPlan | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  /** A new order starts from the first page, which now holds other plans. */
+  function changeSort(next: SortState<InstallmentPlanSortField> | null) {
+    setSort(next)
+    setPage(0)
+  }
 
   function setFilter<K extends keyof InstallmentPlanFilters>(name: K, value: InstallmentPlanFilters[K]) {
     setFilters((current) => ({ ...current, [name]: value }))
@@ -184,12 +193,12 @@ export function InstallmentPlansPage() {
           <table>
             <thead>
               <tr>
-                <th>Número</th>
+                <SortableHeader label="Número" field="NUMBER" sort={sort} onSort={changeSort} />
                 <th>Origem</th>
                 <th>UF</th>
-                <th>Empresa</th>
-                <th>Empresa Cigam</th>
-                <th>Nº parcelas</th>
+                <SortableHeader label="Empresa" field="COMPANY" sort={sort} onSort={changeSort} />
+                <SortableHeader label="Empresa Cigam" field="CIGAM_NUMBER" sort={sort} onSort={changeSort} />
+                <SortableHeader label="Nº parcelas" field="INSTALLMENT_COUNT" sort={sort} onSort={changeSort} />
                 <th>Status</th>
                 <th aria-label="Ações" />
               </tr>

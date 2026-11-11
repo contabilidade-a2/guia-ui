@@ -44,6 +44,7 @@ O back-end (Render gratuito) hiberna após 15 minutos sem uso e leva de 2 a 3 mi
 - Empresa inativa (`Company.active`) continua nas listas e nos filtros, mas sai das opções dos cadastros de guia e de parcelamento; o registro que já a usa continua mostrando-a ao ser editado. O servidor também recusa (422).
 - Datas `yyyy-MM-dd` são formatadas como texto, sem passar por `Date`, para não mudar de dia por fuso. "Hoje" é sempre o dia em `America/Sao_Paulo`.
 - O token JWT fica no `localStorage`; um 401 da API encerra a sessão.
+- Ordenação das listas de guias e de parcelamentos (pedido da usuária em 11/11/2026): o `SortableHeader` (`components/ui.tsx`) torna o cabeçalho clicável; cada clique alterna crescente, decrescente e a ordem padrão (`lib/sort.ts`). Quem ordena é o servidor (`sort`/`direction`), porque as listas são paginadas; trocar a ordem volta para a primeira página. Só algumas colunas são ordenáveis (veja o `CLAUDE.md` do `guia-service`).
 
 ## Estrutura
 

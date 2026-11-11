@@ -1,8 +1,9 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { wakingStore } from '../api/client'
-import type { SendStatus, SlipStatus } from '../api/types'
+import type { SendStatus, SlipStatus, SortState } from '../api/types'
 import { SEND_STATUS_LABELS, SLIP_STATUS_LABELS } from '../lib/format'
+import { nextSort } from '../lib/sort'
 
 export function SlipStatusBadge({ status }: { status: SlipStatus }) {
   return <span className={`badge badge-${status.toLowerCase()}`}>{SLIP_STATUS_LABELS[status]}</span>
@@ -125,5 +126,34 @@ export function Modal({ title, onClose, children }: ModalProps) {
         {children}
       </div>
     </div>
+  )
+}
+
+interface SortableHeaderProps<F extends string> {
+  label: string
+  field: F
+  sort: SortState<F> | null
+  onSort: (sort: SortState<F> | null) => void
+  className?: string
+}
+
+/** A column header that orders the list by its column. */
+export function SortableHeader<F extends string>({ label, field, sort, onSort, className }: SortableHeaderProps<F>) {
+  const active = sort?.field === field
+  const ariaSort = !active ? 'none' : sort.ascending ? 'ascending' : 'descending'
+  return (
+    <th className={className} aria-sort={ariaSort}>
+      <button
+        type="button"
+        className={`sort-button${active ? ' sort-button-active' : ''}`}
+        onClick={() => onSort(nextSort(sort, field))}
+        title={`Ordenar por ${label.toLowerCase()}`}
+      >
+        {label}
+        <span className="sort-arrow" aria-hidden="true">
+          {!active ? '↕' : sort.ascending ? '↑' : '↓'}
+        </span>
+      </button>
+    </th>
   )
 }

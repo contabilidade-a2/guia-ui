@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { companiesApi, slipTypesApi, slipsApi } from '../api/endpoints'
-import type { SlipFilters } from '../api/types'
+import type { SlipFilters, SlipSortField, SortState } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { DeleteIcon, EditIcon, IconButton, IconLink, PlusIcon, ViewIcon } from '../components/icons'
 import { DateRangeChips } from '../components/DateRangeChips'
 import { MultiSelect } from '../components/MultiSelect'
-import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge } from '../components/ui'
+import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge, SortableHeader } from '../components/ui'
 import { errorMessage } from '../api/client'
 import type { Page, SlipSummary } from '../api/types'
 import { DELETE_SLIP_CONFIRMATION, SLIP_STATUS_LABELS, formatDate, formatInstantDate, formatMoney } from '../lib/format'
@@ -32,6 +32,7 @@ export function SlipListPage() {
   const { canEditSlips } = useAuth()
   const [filters, setFilters] = useState<SlipFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
+  const [sort, setSort] = useState<SortState<SlipSortField> | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   // Typed freely; only applied to the filter after a short pause, so each keystroke doesn't fire a request.
   const [cnpjInput, setCnpjInput] = useState('')
@@ -43,8 +44,8 @@ export function SlipListPage() {
     () =>
       nothingSelected
         ? Promise.resolve<Page<SlipSummary>>({ items: [], page: 0, size: PAGE_SIZE, totalItems: 0, totalPages: 0 })
-        : slipsApi.search(filters, page, PAGE_SIZE),
-    [filters, page],
+        : slipsApi.search(filters, page, PAGE_SIZE, sort),
+    [filters, page, sort],
   )
   const [companies, slipTypes] = options.data ?? [[], []]
 
@@ -55,6 +56,12 @@ export function SlipListPage() {
 
   function patchFilters(patch: Partial<SlipFilters>) {
     setFilters((current) => ({ ...current, ...patch }))
+    setPage(0)
+  }
+
+  /** A new order starts from the first page, which now holds other slips. */
+  function changeSort(next: SortState<SlipSortField> | null) {
+    setSort(next)
     setPage(0)
   }
 
@@ -169,11 +176,11 @@ export function SlipListPage() {
               <thead>
                 <tr>
                   <th>Assunto</th>
-                  <th>Tipo de guia</th>
+                  <SortableHeader label="Tipo de guia" field="SLIP_TYPE" sort={sort} onSort={changeSort} />
                   <th>Envio</th>
-                  <th>Enviada em</th>
-                  <th>Vencimento</th>
-                  <th className="numeric">Valor</th>
+                  <SortableHeader label="Enviada em" field="SENT_AT" sort={sort} onSort={changeSort} />
+                  <SortableHeader label="Vencimento" field="DUE_DATE" sort={sort} onSort={changeSort} />
+                  <SortableHeader label="Valor" field="AMOUNT" sort={sort} onSort={changeSort} className="numeric" />
                   <th>Status</th>
                   <th aria-label="Ações" />
                 </tr>

@@ -9,6 +9,7 @@ import type {
   HistoryEntry,
   InstallmentPlan,
   InstallmentPlanFilters,
+  InstallmentPlanSortField,
   InstallmentPlanInput,
   LoginResult,
   Page,
@@ -16,6 +17,8 @@ import type {
   SlipDetail,
   SlipFilters,
   SlipInput,
+  SlipSortField,
+  SortState,
   SlipSummary,
   SlipType,
   SlipTypeInput,
@@ -55,8 +58,9 @@ export const slipTypesApi = {
 }
 
 export const installmentPlansApi = {
-  search: (filters: InstallmentPlanFilters, page: number, size: number) => {
+  search: (filters: InstallmentPlanFilters, page: number, size: number, sort: SortState<InstallmentPlanSortField> | null = null) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
+    appendSort(params, sort)
     filters.companyIds?.forEach((id) => params.append('companyId', id))
     if (filters.number) params.set('number', filters.number)
     if (filters.cigamNumber) params.set('cigamNumber', filters.cigamNumber)
@@ -71,6 +75,12 @@ export const installmentPlansApi = {
   update: (id: number, input: InstallmentPlanInput) =>
     request<InstallmentPlan>('PUT', `/api/installment-plans/${id}`, input),
   remove: (id: number) => request<void>('DELETE', `/api/installment-plans/${id}`),
+}
+
+function appendSort(params: URLSearchParams, sort: SortState<string> | null) {
+  if (!sort) return
+  params.set('sort', sort.field)
+  params.set('direction', sort.ascending ? 'ASC' : 'DESC')
 }
 
 /** Query string shared by the slip list and the deleted slips list. */
@@ -93,8 +103,11 @@ function slipSearchParams(filters: SlipFilters, page: number, size: number): URL
 }
 
 export const slipsApi = {
-  search: (filters: SlipFilters, page: number, size: number) =>
-    request<Page<SlipSummary>>('GET', `/api/slips?${slipSearchParams(filters, page, size)}`),
+  search: (filters: SlipFilters, page: number, size: number, sort: SortState<SlipSortField> | null = null) => {
+    const params = slipSearchParams(filters, page, size)
+    appendSort(params, sort)
+    return request<Page<SlipSummary>>('GET', `/api/slips?${params}`)
+  },
   get: (id: number) => request<SlipDetail>('GET', `/api/slips/${id}`),
   create: (input: SlipInput) => request<SlipDetail>('POST', '/api/slips', input),
   update: (id: number, input: SlipInput) => request<SlipDetail>('PUT', `/api/slips/${id}`, input),
