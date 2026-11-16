@@ -183,6 +183,8 @@ export interface SlipFilters {
   sentTo: string
   /** Full or partial, with or without punctuation. */
   companyCnpj: string
+  /** Part of the installment plan number; only the slip list has it (a deleted slip keeps no plan). */
+  planNumber?: string
 }
 
 export interface SlipDeleter {

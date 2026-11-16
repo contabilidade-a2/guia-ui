@@ -45,6 +45,7 @@ O back-end (Render gratuito) hiberna após 15 minutos sem uso e leva de 2 a 3 mi
 - Datas `yyyy-MM-dd` são formatadas como texto, sem passar por `Date`, para não mudar de dia por fuso. "Hoje" é sempre o dia em `America/Sao_Paulo`.
 - O token JWT fica no `localStorage`; um 401 da API encerra a sessão.
 - Ordenação das listas de guias e de parcelamentos (pedido da usuária em 11/11/2026): o `SortableHeader` (`components/ui.tsx`) torna o cabeçalho clicável; cada clique alterna crescente, decrescente e a ordem padrão (`lib/sort.ts`). Quem ordena é o servidor (`sort`/`direction`), porque as listas são paginadas; trocar a ordem volta para a primeira página. Só algumas colunas são ordenáveis (veja o `CLAUDE.md` do `guia-service`).
+- Filtros de parcelamento na lista de guias (pedido da usuária em 16/11/2026): "Nº do parcelamento" (só dígitos, parte do número, aplicado após uma pausa na digitação, como o CNPJ; vai como `planNumber`) e "Origem" (botões Todas/SEFAZ/ECAC/PGFN/SN; vai como `origin`), na segunda linha dos filtros, iguais aos da tela de parcelamentos. A tela de guias excluídas não tem o número (a cópia não guarda o parcelamento).
 
 ## Estrutura
 

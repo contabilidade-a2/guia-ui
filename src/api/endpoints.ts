@@ -99,6 +99,7 @@ function slipSearchParams(filters: SlipFilters, page: number, size: number): URL
   if (filters.competenceFrom) params.set('competenceFrom', firstDayOfMonth(filters.competenceFrom))
   if (filters.competenceTo) params.set('competenceTo', lastDayOfMonth(filters.competenceTo))
   if (filters.companyCnpj) params.set('companyCnpj', filters.companyCnpj)
+  if (filters.planNumber) params.set('planNumber', filters.planNumber)
   return params
 }
 

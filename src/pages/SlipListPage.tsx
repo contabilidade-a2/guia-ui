@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { companiesApi, slipTypesApi, slipsApi } from '../api/endpoints'
-import type { SlipFilters, SlipSortField, SortState } from '../api/types'
+import type { InstallmentOrigin, SlipFilters, SlipSortField, SortState } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { DeleteIcon, EditIcon, IconButton, IconLink, PlusIcon, ViewIcon } from '../components/icons'
 import { DateRangeChips } from '../components/DateRangeChips'
@@ -9,7 +9,8 @@ import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge, SortableHeader } from '../components/ui'
 import { errorMessage } from '../api/client'
 import type { Page, SlipSummary } from '../api/types'
-import { DELETE_SLIP_CONFIRMATION, SLIP_STATUS_LABELS, formatDate, formatInstantDate, formatMoney } from '../lib/format'
+import { DELETE_SLIP_CONFIRMATION, ORIGIN_LABELS, SLIP_STATUS_LABELS, formatDate, formatInstantDate, formatMoney } from '../lib/format'
+import { onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 
 const PAGE_SIZE = 20
@@ -26,6 +27,7 @@ const EMPTY_FILTERS: SlipFilters = {
   sentFrom: '',
   sentTo: '',
   companyCnpj: '',
+  planNumber: '',
 }
 
 export function SlipListPage() {
@@ -36,6 +38,7 @@ export function SlipListPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   // Typed freely; only applied to the filter after a short pause, so each keystroke doesn't fire a request.
   const [cnpjInput, setCnpjInput] = useState('')
+  const [planNumberInput, setPlanNumberInput] = useState('')
 
   const options = useLoad(() => Promise.all([companiesApi.list(), slipTypesApi.list()]), [])
   // A multi-value filter with every option unchecked matches nothing: no need to ask the server.
@@ -68,6 +71,7 @@ export function SlipListPage() {
   function clearFilters() {
     setFilters(EMPTY_FILTERS)
     setCnpjInput('')
+    setPlanNumberInput('')
     setPage(0)
   }
 
@@ -76,6 +80,12 @@ export function SlipListPage() {
     return () => clearTimeout(timeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cnpjInput])
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setFilter('planNumber', planNumberInput), 400)
+    return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planNumberInput])
 
   async function remove(slip: SlipSummary) {
     if (!window.confirm(`${slip.subject}\n\n${DELETE_SLIP_CONFIRMATION}`)) return
@@ -153,6 +163,27 @@ export function SlipListPage() {
             ]}
             value={filters.statuses?.[0] ?? ''}
             onChange={(value) => setFilter('statuses', value === '' ? null : [value])}
+          />
+        </Field>
+        {/* Installment plan slips: the plan's number (any part) and the origin, as on the plans screen. */}
+        <Field label="Nº do parcelamento">
+          <input
+            inputMode="numeric"
+            maxLength={30}
+            value={planNumberInput}
+            onChange={(e) => setPlanNumberInput(onlyDigits(e.target.value))}
+            placeholder="Completo ou parcial"
+          />
+        </Field>
+        <Field label="Origem" group className="filter-origin">
+          <Segmented
+            label="Origem do parcelamento"
+            options={[
+              { value: '', label: 'Todas' },
+              ...(Object.keys(ORIGIN_LABELS) as InstallmentOrigin[]).map((value) => ({ value, label: ORIGIN_LABELS[value] })),
+            ]}
+            value={filters.origins?.[0] ?? ''}
+            onChange={(value) => setFilter('origins', value === '' ? null : [value])}
           />
         </Field>
         <div className="filter-row">

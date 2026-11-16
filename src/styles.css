@@ -905,6 +905,12 @@ input[type='radio'] {
   grid-column: auto;
 }
 
+/* second line: plan number under company; the origin buttons take the next two columns and size to their content */
+.filters-slips .filter-origin {
+  grid-column: span 2;
+  justify-self: start;
+}
+
 .filters-slips .segmented button {
   padding: 0 0.6rem;
   font-size: 0.88rem;
