@@ -45,7 +45,10 @@ O back-end (Render gratuito) hiberna após 15 minutos sem uso e leva de 2 a 3 mi
 - Datas `yyyy-MM-dd` são formatadas como texto, sem passar por `Date`, para não mudar de dia por fuso. "Hoje" é sempre o dia em `America/Sao_Paulo`.
 - O token JWT fica no `localStorage`; um 401 da API encerra a sessão.
 - Ordenação das listas de guias e de parcelamentos (pedido da usuária em 11/11/2026): o `SortableHeader` (`components/ui.tsx`) torna o cabeçalho clicável; cada clique alterna crescente, decrescente e a ordem padrão (`lib/sort.ts`). Quem ordena é o servidor (`sort`/`direction`), porque as listas são paginadas; trocar a ordem volta para a primeira página. Só algumas colunas são ordenáveis (veja o `CLAUDE.md` do `guia-service`).
-- Filtros de parcelamento na lista de guias (pedido da usuária em 16/11/2026): "Nº do parcelamento" (só dígitos, parte do número, aplicado após uma pausa na digitação, como o CNPJ; vai como `planNumber`) e "Origem" (botões Todas/SEFAZ/ECAC/PGFN/SN; vai como `origin`), na segunda linha dos filtros, iguais aos da tela de parcelamentos. A tela de guias excluídas não tem o número (a cópia não guarda o parcelamento).
+- Filtros da lista de guias (layout escolhido pela usuária em 17/11/2026, entre três propostas): **Empresa, Assunto e Status ficam sempre visíveis** (são os prioritários), ao lado do botão "Filtros avançados", que mostra **+** fechado e **−** aberto (sem número de filtros, pedido da usuária) e fica verde quando há filtro avançado em uso com o painel fechado. O painel tem Tipo, CNPJ, Valor, Nº do parcelamento, Origem e as datas. Com ele fechado, cada filtro avançado em uso vira uma etiqueta com × (as datas vêm de `activeDateFilters`, em `lib/dateFilters.ts`). Detalhes:
+  - Assunto (`subject`), CNPJ e Nº do parcelamento (`planNumber`, 16/11/2026) são aplicados após uma pausa na digitação; Origem vai como `origin`.
+  - Valor: dois `CurrencyInput` ("de" e "até") numa caixa só. O "até" copia o "de" enquanto não for editado (um valor = busca exata; para faixa, edita-se o "até"; apagá-lo volta a copiar). Vai como `amountFrom`/`amountTo`.
+  - A tela de guias excluídas não tem esses filtros novos (a cópia não guarda o parcelamento; assunto e valor não foram pedidos lá).
 
 ## Estrutura
 
