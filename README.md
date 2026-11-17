@@ -62,7 +62,7 @@ A API precisa aceitar a origem do site publicado (CORS); essa configuração é 
 
 ## Tarefas agendadas
 
-Este repositório **não** tem workflows agendados: só o `deploy.yml` (publicação no Pages). Manter a API acordada e disparar a rotina diária é feito por um agendador externo, o [cron-job.org](https://cron-job.org) (gratuito), com duas chamadas HTTP à API. O passo a passo está no README do `guia-service`, seção "Agendamentos no cron-job.org".
+Este repositório **não** tem workflows agendados: só o `deploy.yml` (publicação no Pages). A rotina diária da API é disparada por um script externo e gratuito do Google Apps Script, configurado à mão. Não há ping para manter a API acordada: ela hiberna e acorda sob demanda. O passo a passo está no README do `guia-service`, seção "Rotina diária no Google Apps Script".
 
 ## Segurança
 

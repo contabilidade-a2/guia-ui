@@ -23,7 +23,7 @@ npm run lint
 
 ## Agendamentos
 
-Não há workflows agendados neste repositório (só o `deploy.yml`). A rotina diária (`POST /internal/jobs/daily`) é chamada pelo cron-job.org, configurado à mão; veja o `CLAUDE.md` e o README do `guia-service`. O keep-alive foi removido (12/10/2026): não criar pings para manter o back-end acordado. Motivo: a conta anterior no GitHub foi suspensa em 08/10/2026, provavelmente pelo ping de 5 em 5 minutos via Actions, e por isso nada agendado fica mais no GitHub.
+Não há workflows agendados neste repositório (só o `deploy.yml`). A rotina diária (`POST /internal/jobs/daily`) é chamada por um script do Google Apps Script, numa conta Google, configurado à mão (código e passo a passo na seção 5 do README do `guia-service`): dois disparos por dia, entre 9h e 10h e, de reserva, entre 10h e 11h. Ele substituiu o cron-job.org (configuração concluída pela usuária em 17/11/2026, com os jobs antigos desativados). O keep-alive foi removido (12/10/2026): não criar pings para manter o back-end acordado. Motivo: a conta anterior no GitHub foi suspensa em 08/10/2026, provavelmente pelo ping de 5 em 5 minutos via Actions, e por isso nada agendado fica mais no GitHub.
 
 ## Back-end hibernando
 
