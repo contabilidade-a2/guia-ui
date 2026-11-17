@@ -100,6 +100,9 @@ function slipSearchParams(filters: SlipFilters, page: number, size: number): URL
   if (filters.competenceTo) params.set('competenceTo', lastDayOfMonth(filters.competenceTo))
   if (filters.companyCnpj) params.set('companyCnpj', filters.companyCnpj)
   if (filters.planNumber) params.set('planNumber', filters.planNumber)
+  if (filters.subject) params.set('subject', filters.subject)
+  if (filters.amountFrom) params.set('amountFrom', filters.amountFrom)
+  if (filters.amountTo) params.set('amountTo', filters.amountTo)
   return params
 }
 

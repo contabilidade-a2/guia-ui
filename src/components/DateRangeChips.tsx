@@ -1,17 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SlipFilters } from '../api/types'
-import { firstDayOfMonth, formatDate, lastDayOfMonth, todayIso } from '../lib/format'
+import { DATE_KINDS, rangeSummary } from '../lib/dateFilters'
+import type { DateFilterName, DateFilters, DateKind } from '../lib/dateFilters'
+import { firstDayOfMonth, lastDayOfMonth, todayIso } from '../lib/format'
 import { MonthInput } from './MonthInput'
-
-type DateKind = 'competence' | 'due' | 'sent'
-type DateFilterName = 'competenceFrom' | 'competenceTo' | 'dueFrom' | 'dueTo' | 'sentFrom' | 'sentTo'
-type DateFilters = Pick<SlipFilters, DateFilterName>
-
-const DATE_KINDS: Record<DateKind, { label: string; from: DateFilterName; to: DateFilterName; month: boolean }> = {
-  competence: { label: 'Competência', from: 'competenceFrom', to: 'competenceTo', month: true },
-  due: { label: 'Vencimento', from: 'dueFrom', to: 'dueTo', month: false },
-  sent: { label: 'Enviada em', from: 'sentFrom', to: 'sentTo', month: false },
-}
 
 /** `2026-01` → `2025-12` */
 function previousMonth(month: string): string {
@@ -35,18 +26,6 @@ function shortcuts(month: boolean): { label: string; from: string; to: string }[
     { label: 'Este mês', from: firstDayOfMonth(thisMonth), to: lastDayOfMonth(thisMonth) },
     { label: 'Mês passado', from: firstDayOfMonth(lastMonth), to: lastDayOfMonth(lastMonth) },
   ]
-}
-
-/** Text of the chosen range (`01/10/2026 – 31/10/2026`), or empty when neither end is set. */
-function rangeSummary(kind: DateKind, filters: DateFilters): string {
-  const { from, to, month } = DATE_KINDS[kind]
-  const format = (value: string) => (month ? `${value.slice(5, 7)}/${value.slice(0, 4)}` : formatDate(value))
-  const start = filters[from]
-  const end = filters[to]
-  if (start && end) return start === end ? format(start) : `${format(start)} – ${format(end)}`
-  if (start) return `a partir de ${format(start)}`
-  if (end) return `até ${format(end)}`
-  return ''
 }
 
 interface DateRangeChipsProps {

@@ -4,7 +4,9 @@ import { companiesApi, slipTypesApi, slipsApi } from '../api/endpoints'
 import type { InstallmentOrigin, SlipFilters, SlipSortField, SortState } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { DeleteIcon, EditIcon, IconButton, IconLink, PlusIcon, ViewIcon } from '../components/icons'
+import { CurrencyInput } from '../components/CurrencyInput'
 import { DateRangeChips } from '../components/DateRangeChips'
+import { activeDateFilters } from '../lib/dateFilters'
 import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge, SortableHeader } from '../components/ui'
 import { errorMessage } from '../api/client'
@@ -28,6 +30,20 @@ const EMPTY_FILTERS: SlipFilters = {
   sentTo: '',
   companyCnpj: '',
   planNumber: '',
+  subject: '',
+  amountFrom: '',
+  amountTo: '',
+}
+
+/** `1500.00` → `R$ 1.500,00` */
+function money(value: string): string {
+  return formatMoney(Number(value))
+}
+
+function amountSummary(from: string, to: string): string {
+  if (from && to) return from === to ? money(from) : `${money(from)} – ${money(to)}`
+  if (from) return `a partir de ${money(from)}`
+  return `até ${money(to)}`
 }
 
 export function SlipListPage() {
@@ -39,6 +55,13 @@ export function SlipListPage() {
   // Typed freely; only applied to the filter after a short pause, so each keystroke doesn't fire a request.
   const [cnpjInput, setCnpjInput] = useState('')
   const [planNumberInput, setPlanNumberInput] = useState('')
+  const [subjectInput, setSubjectInput] = useState('')
+  const [amountFromInput, setAmountFromInput] = useState('')
+  const [amountToInput, setAmountToInput] = useState('')
+  // "Até" copies "de" until the user edits it: one value is an exact search, two make a range.
+  const [amountToEdited, setAmountToEdited] = useState(false)
+  // Type, CNPJ, amount, plan and dates stay folded away; company, subject and status are always shown.
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
   const options = useLoad(() => Promise.all([companiesApi.list(), slipTypesApi.list()]), [])
   // A multi-value filter with every option unchecked matches nothing: no need to ask the server.
@@ -72,6 +95,10 @@ export function SlipListPage() {
     setFilters(EMPTY_FILTERS)
     setCnpjInput('')
     setPlanNumberInput('')
+    setSubjectInput('')
+    setAmountFromInput('')
+    setAmountToInput('')
+    setAmountToEdited(false)
     setPage(0)
   }
 
@@ -87,6 +114,35 @@ export function SlipListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planNumberInput])
 
+  useEffect(() => {
+    const timeout = setTimeout(() => setFilter('subject', subjectInput), 400)
+    return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectInput])
+
+  useEffect(() => {
+    const timeout = setTimeout(() => patchFilters({ amountFrom: amountFromInput, amountTo: amountToInput }), 400)
+    return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amountFromInput, amountToInput])
+
+  function changeAmountFrom(value: string) {
+    setAmountFromInput(value)
+    if (!amountToEdited) setAmountToInput(value)
+  }
+
+  function changeAmountTo(value: string) {
+    setAmountToInput(value)
+    // Emptied: copy "de" again from now on.
+    setAmountToEdited(value !== '')
+  }
+
+  function clearAmount() {
+    setAmountFromInput('')
+    setAmountToInput('')
+    setAmountToEdited(false)
+  }
+
   async function remove(slip: SlipSummary) {
     if (!window.confirm(`${slip.subject}\n\n${DELETE_SLIP_CONFIRMATION}`)) return
     setDeleteError(null)
@@ -99,6 +155,23 @@ export function SlipListPage() {
       setDeleteError(errorMessage(caught))
     }
   }
+
+  const selectedTypes = slipTypes.filter((slipType) => filters.slipTypeIds?.includes(String(slipType.id)))
+  const activeAdvanced: { label: string; clear: () => void }[] = [
+    ...(filters.slipTypeIds !== null
+      ? [{
+          label: `Tipo: ${selectedTypes.length === 1 ? selectedTypes[0].name : `${filters.slipTypeIds.length} tipos`}`,
+          clear: () => setFilter('slipTypeIds', null),
+        }]
+      : []),
+    ...(filters.companyCnpj ? [{ label: `CNPJ: ${filters.companyCnpj}`, clear: () => setCnpjInput('') }] : []),
+    ...(filters.amountFrom || filters.amountTo
+      ? [{ label: `Valor: ${amountSummary(filters.amountFrom ?? '', filters.amountTo ?? '')}`, clear: clearAmount }]
+      : []),
+    ...(filters.planNumber ? [{ label: `Parcelamento: ${filters.planNumber}`, clear: () => setPlanNumberInput('') }] : []),
+    ...(filters.origins ? [{ label: `Origem: ${filters.origins.join(', ')}`, clear: () => setFilter('origins', null) }] : []),
+    ...activeDateFilters(filters).map((date) => ({ label: `${date.label}: ${date.summary}`, clear: () => patchFilters(date.clear) })),
+  ]
 
   const hasFilters = Object.values(filters).some((value) => (Array.isArray(value) ? true : Boolean(value)))
   const result = slips.data
@@ -122,9 +195,9 @@ export function SlipListPage() {
         )}
       </div>
 
-      {/* One line of filters (status as buttons), then a line with the date chips. */}
+      {/* Company, subject and status always in sight; the other filters open under "Filtros avançados". */}
       <div className="card filters filters-slips">
-        <Field label="Empresa" group className="filter-wide">
+        <Field label="Empresa" group>
           <MultiSelect
             label="Empresa"
             options={companies.map((company) => ({ value: String(company.id), label: company.label }))}
@@ -135,24 +208,8 @@ export function SlipListPage() {
             countText={(count) => `${count} empresas`}
           />
         </Field>
-        <Field label="CNPJ">
-          <input
-            type="text"
-            value={cnpjInput}
-            onChange={(e) => setCnpjInput(e.target.value)}
-            placeholder="Completo ou parcial"
-          />
-        </Field>
-        <Field label="Tipo" group>
-          <MultiSelect
-            label="Tipo de guia"
-            options={slipTypes.map((slipType) => ({ value: String(slipType.id), label: slipType.name }))}
-            selected={filters.slipTypeIds}
-            onChange={(values) => setFilter('slipTypeIds', values)}
-            allText="Todos"
-            noneText="Nenhum"
-            countText={(count) => `${count} tipos`}
-          />
+        <Field label="Assunto">
+          <input type="search" value={subjectInput} onChange={(e) => setSubjectInput(e.target.value)} placeholder="Parte do assunto, ex.: IRPJ" />
         </Field>
         <Field label="Status" group>
           <Segmented
@@ -165,35 +222,93 @@ export function SlipListPage() {
             onChange={(value) => setFilter('statuses', value === '' ? null : [value])}
           />
         </Field>
-        {/* Installment plan slips: the plan's number (any part) and the origin, as on the plans screen. */}
-        <Field label="Nº do parcelamento">
-          <input
-            inputMode="numeric"
-            maxLength={30}
-            value={planNumberInput}
-            onChange={(e) => setPlanNumberInput(onlyDigits(e.target.value))}
-            placeholder="Completo ou parcial"
-          />
-        </Field>
-        <Field label="Origem" group className="filter-origin">
-          <Segmented
-            label="Origem do parcelamento"
-            options={[
-              { value: '', label: 'Todas' },
-              ...(Object.keys(ORIGIN_LABELS) as InstallmentOrigin[]).map((value) => ({ value, label: ORIGIN_LABELS[value] })),
-            ]}
-            value={filters.origins?.[0] ?? ''}
-            onChange={(value) => setFilter('origins', value === '' ? null : [value])}
-          />
-        </Field>
-        <div className="filter-row">
-          <DateRangeChips filters={filters} onChange={patchFilters} />
-          {hasFilters && (
-            <button type="button" className="link-button filter-row-end" onClick={clearFilters}>
-              Limpar filtros
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          className={`button filters-toggle${advancedOpen ? ' filters-toggle-open' : ''}${!advancedOpen && activeAdvanced.length > 0 ? ' filters-toggle-active' : ''}`}
+          aria-expanded={advancedOpen}
+          aria-controls="advanced-filters"
+          onClick={() => setAdvancedOpen(!advancedOpen)}
+        >
+          Filtros avançados
+          <span className="filters-toggle-sign" aria-hidden="true">
+            {advancedOpen ? '−' : '+'}
+          </span>
+        </button>
+
+        {advancedOpen ? (
+          <div className="filters-advanced" id="advanced-filters">
+            <Field label="Tipo" group>
+              <MultiSelect
+                label="Tipo de guia"
+                options={slipTypes.map((slipType) => ({ value: String(slipType.id), label: slipType.name }))}
+                selected={filters.slipTypeIds}
+                onChange={(values) => setFilter('slipTypeIds', values)}
+                allText="Todos"
+                noneText="Nenhum"
+                countText={(count) => `${count} tipos`}
+              />
+            </Field>
+            <Field label="CNPJ">
+              <input type="text" value={cnpjInput} onChange={(e) => setCnpjInput(e.target.value)} placeholder="Completo ou parcial" />
+            </Field>
+            <Field label="Valor (R$)" group>
+              <div className="range-input">
+                <CurrencyInput value={amountFromInput} onChange={changeAmountFrom} aria-label="Valor: de" />
+                <span className="range-input-separator" aria-hidden="true">
+                  até
+                </span>
+                <CurrencyInput value={amountToInput} onChange={changeAmountTo} aria-label="Valor: até" />
+              </div>
+            </Field>
+            <Field label="Nº do parcelamento">
+              <input
+                inputMode="numeric"
+                maxLength={30}
+                value={planNumberInput}
+                onChange={(e) => setPlanNumberInput(onlyDigits(e.target.value))}
+                placeholder="Completo ou parcial"
+              />
+            </Field>
+            <Field label="Origem" group>
+              <Segmented
+                label="Origem do parcelamento"
+                options={[
+                  { value: '', label: 'Todas' },
+                  ...(Object.keys(ORIGIN_LABELS) as InstallmentOrigin[]).map((value) => ({ value, label: ORIGIN_LABELS[value] })),
+                ]}
+                value={filters.origins?.[0] ?? ''}
+                onChange={(value) => setFilter('origins', value === '' ? null : [value])}
+              />
+            </Field>
+            <div className="filter-row">
+              <DateRangeChips filters={filters} onChange={patchFilters} />
+              {hasFilters && (
+                <button type="button" className="link-button filter-row-end" onClick={clearFilters}>
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          hasFilters && (
+            <div className="filter-row">
+              {activeAdvanced.length > 0 && <span className="muted small">Filtros avançados:</span>}
+              {activeAdvanced.map((item) => (
+                <span key={item.label} className="filter-chip filter-chip-on">
+                  <button type="button" className="filter-chip-main" onClick={() => setAdvancedOpen(true)}>
+                    {item.label}
+                  </button>
+                  <button type="button" className="filter-chip-remove" aria-label={`Remover filtro ${item.label}`} onClick={item.clear}>
+                    ×
+                  </button>
+                </span>
+              ))}
+              <button type="button" className="link-button filter-row-end" onClick={clearFilters}>
+                Limpar filtros
+              </button>
+            </div>
+          )
+        )}
       </div>
 
       <ErrorBanner message={options.error ?? slips.error} onRetry={slips.reload} />

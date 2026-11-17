@@ -185,6 +185,11 @@ export interface SlipFilters {
   companyCnpj: string
   /** Part of the installment plan number; only the slip list has it (a deleted slip keeps no plan). */
   planNumber?: string
+  /** Part of the subject, case and accents ignored; slip list only. */
+  subject?: string
+  /** Plain decimals (`1234.50`), inclusive; slip list only. */
+  amountFrom?: string
+  amountTo?: string
 }
 
 export interface SlipDeleter {
