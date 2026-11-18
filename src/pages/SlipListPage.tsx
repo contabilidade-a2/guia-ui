@@ -6,7 +6,6 @@ import { useAuth } from '../auth/AuthContext'
 import { DeleteIcon, EditIcon, IconButton, IconLink, PlusIcon, ViewIcon } from '../components/icons'
 import { CurrencyInput } from '../components/CurrencyInput'
 import { DateRangeChips } from '../components/DateRangeChips'
-import { activeDateFilters } from '../lib/dateFilters'
 import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, Segmented, SendStatusBadge, SlipStatusBadge, SortableHeader } from '../components/ui'
 import { errorMessage } from '../api/client'
@@ -170,7 +169,6 @@ export function SlipListPage() {
       : []),
     ...(filters.planNumber ? [{ label: `Parcelamento: ${filters.planNumber}`, clear: () => setPlanNumberInput('') }] : []),
     ...(filters.origins ? [{ label: `Origem: ${filters.origins.join(', ')}`, clear: () => setFilter('origins', null) }] : []),
-    ...activeDateFilters(filters).map((date) => ({ label: `${date.label}: ${date.summary}`, clear: () => patchFilters(date.clear) })),
   ]
 
   const hasFilters = Object.values(filters).some((value) => (Array.isArray(value) ? true : Boolean(value)))
@@ -235,7 +233,33 @@ export function SlipListPage() {
           </span>
         </button>
 
-        {advancedOpen ? (
+        {/* The dates stay in sight (asked on 18/11/2026); the other secondary filters open under the button. */}
+        <div className="filter-row">
+          <DateRangeChips filters={filters} onChange={patchFilters} />
+          {!advancedOpen && activeAdvanced.length > 0 && (
+            <>
+              <span className="filter-row-divider" aria-hidden="true" />
+              <span className="muted small">Filtros avançados:</span>
+              {activeAdvanced.map((item) => (
+                <span key={item.label} className="filter-chip filter-chip-on">
+                  <button type="button" className="filter-chip-main" onClick={() => setAdvancedOpen(true)}>
+                    {item.label}
+                  </button>
+                  <button type="button" className="filter-chip-remove" aria-label={`Remover filtro ${item.label}`} onClick={item.clear}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </>
+          )}
+          {hasFilters && (
+            <button type="button" className="link-button filter-row-end" onClick={clearFilters}>
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
+        {advancedOpen && (
           <div className="filters-advanced" id="advanced-filters">
             <Field label="Tipo" group>
               <MultiSelect
@@ -280,34 +304,7 @@ export function SlipListPage() {
                 onChange={(value) => setFilter('origins', value === '' ? null : [value])}
               />
             </Field>
-            <div className="filter-row">
-              <DateRangeChips filters={filters} onChange={patchFilters} />
-              {hasFilters && (
-                <button type="button" className="link-button filter-row-end" onClick={clearFilters}>
-                  Limpar filtros
-                </button>
-              )}
-            </div>
           </div>
-        ) : (
-          hasFilters && (
-            <div className="filter-row">
-              {activeAdvanced.length > 0 && <span className="muted small">Filtros avançados:</span>}
-              {activeAdvanced.map((item) => (
-                <span key={item.label} className="filter-chip filter-chip-on">
-                  <button type="button" className="filter-chip-main" onClick={() => setAdvancedOpen(true)}>
-                    {item.label}
-                  </button>
-                  <button type="button" className="filter-chip-remove" aria-label={`Remover filtro ${item.label}`} onClick={item.clear}>
-                    ×
-                  </button>
-                </span>
-              ))}
-              <button type="button" className="link-button filter-row-end" onClick={clearFilters}>
-                Limpar filtros
-              </button>
-            </div>
-          )
         )}
       </div>
 

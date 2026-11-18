@@ -22,13 +22,3 @@ export function rangeSummary(kind: DateKind, filters: DateFilters): string {
   if (end) return `até ${format(end)}`
   return ''
 }
-
-/** The date filters in use, for a summary shown elsewhere (`Vencimento: 01/11/2026 – 30/11/2026`). */
-export function activeDateFilters(filters: DateFilters): { label: string; summary: string; clear: Partial<DateFilters> }[] {
-  return (Object.keys(DATE_KINDS) as DateKind[])
-    .map((kind) => {
-      const { label, from, to } = DATE_KINDS[kind]
-      return { label, summary: rangeSummary(kind, filters), clear: { [from]: '', [to]: '' } }
-    })
-    .filter((item) => item.summary !== '')
-}
