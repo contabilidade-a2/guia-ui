@@ -1,6 +1,6 @@
 # guia-ui
 
-Interface web de um sistema interno de lançamento e conferência de guias de tributos: calendário de vencimentos, cadastro e consulta de guias, registro de pagamento e cadastros de apoio.
+Interface web do Sistema Contábil, um sistema interno (antes chamado Sistema de Guias): lançamento e conferência de guias de tributos, calendário de vencimentos, registro de pagamento, cadastros de apoio e, em breve, controles contábeis.
 
 É só a camada de apresentação. Os dados, as regras e o controle de acesso ficam em uma API separada, que não faz parte deste repositório.
 
