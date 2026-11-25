@@ -205,6 +205,91 @@ a:hover {
   border-bottom-color: var(--primary);
 }
 
+/* a group of the menu (Guias, Cadastros, Contábil, Administração): a button that opens its screens */
+.nav-group {
+  position: relative;
+}
+
+.nav-group-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.3rem 0 1.15rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.nav-group-button:hover,
+.nav-group-button.open {
+  color: var(--text);
+}
+
+.nav-group-button.active {
+  color: var(--text);
+  border-bottom-color: var(--primary);
+}
+
+.nav-group-caret {
+  font-size: 0.7rem;
+}
+
+.nav-menu {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: -0.6rem;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: 0 12px 32px rgb(24 24 27 / 12%);
+}
+
+.nav .nav-menu a,
+.nav-menu-soon {
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.nav .nav-menu a:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.nav .nav-menu a.active {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.nav-menu-soon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted);
+  cursor: default;
+}
+
+.soon-badge {
+  padding: 0.05rem 0.5rem;
+  border: 1px dashed var(--control-border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 .topbar-user {
   position: relative;
 }

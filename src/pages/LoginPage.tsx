@@ -37,9 +37,8 @@ export function LoginPage() {
       <form className="card login-card" onSubmit={submit}>
         <h1>
           <BrandIcon />
-          Sistema de Guias
+          Sistema Contábil
         </h1>
-        <p className="muted">Lançamento e conferência de guias</p>
         <ErrorBanner message={error} />
         <Field label="E-mail">
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required autoFocus />
