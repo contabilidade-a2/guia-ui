@@ -4,7 +4,7 @@ import { errorMessage, fieldErrors } from '../api/client'
 import { companiesApi, usersApi } from '../api/endpoints'
 import type { Company, User } from '../api/types'
 import { CheckboxList } from '../components/CheckboxList'
-import { onlyDigits } from '../lib/text'
+import { normalize, onlyDigits } from '../lib/text'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
 import { useLoad } from '../lib/useLoad'
@@ -15,12 +15,52 @@ function userNames(userIds: number[], users: User[]): string {
   return userIds.map((id) => users.find((u) => u.id === id)?.name ?? '?').join(', ')
 }
 
+interface CompanyFilters {
+  /** Part of the name or the trade name; case and accents ignored. */
+  name: string
+  /** Part of the CNPJ, with or without punctuation. */
+  cnpj: string
+  cigamCode: string
+  dominioCode: string
+  /** `''` = all. */
+  status: '' | 'active' | 'inactive'
+}
+
+const EMPTY_FILTERS: CompanyFilters = { name: '', cnpj: '', cigamCode: '', dominioCode: '', status: '' }
+
+/** CNPJ without punctuation, upper case (the alphanumeric format has letters). */
+function plainCnpj(text: string): string {
+  return text.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
+}
+
+/**
+ * The list is small and comes whole from the API, so it is filtered here, as the user types
+ * (asked by the user on 25/11/2026). Each filter matches any part of its field.
+ */
+function matches(company: Company, filters: CompanyFilters): boolean {
+  const name = normalize(filters.name.trim())
+  if (name && !normalize(`${company.name} ${company.tradeName ?? ''}`).includes(name)) return false
+  const cnpj = plainCnpj(filters.cnpj)
+  if (cnpj && !company.cnpj.includes(cnpj)) return false
+  if (filters.cigamCode && !(company.cigamCode ?? '').includes(filters.cigamCode)) return false
+  if (filters.dominioCode && !(company.dominioCode ?? '').includes(filters.dominioCode)) return false
+  if (filters.status && company.active !== (filters.status === 'active')) return false
+  return true
+}
+
 export function CompaniesPage() {
   const companies = useLoad(() => companiesApi.list(), [])
   const users = useLoad(() => usersApi.list(), [])
   /** `null` = closed, `'new'` = creating, otherwise the company being edited. */
   const [editing, setEditing] = useState<Company | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [filters, setFilters] = useState<CompanyFilters>(EMPTY_FILTERS)
+  const hasFilters = Object.values(filters).some(Boolean)
+  const shown = (companies.data ?? []).filter((company) => matches(company, filters))
+
+  function setFilter<K extends keyof CompanyFilters>(name: K, value: CompanyFilters[K]) {
+    setFilters((current) => ({ ...current, [name]: value }))
+  }
 
   async function remove(company: Company) {
     if (!window.confirm(`Excluir a empresa "${company.name}"?`)) return
@@ -36,13 +76,72 @@ export function CompaniesPage() {
   return (
     <>
       <div className="page-header">
-        <h1>Empresas</h1>
+        <div>
+          <h1>Empresas</h1>
+          <div className="page-subtitle">
+            {companies.data
+              ? hasFilters
+                ? `${shown.length} de ${companies.data.length} ${companies.data.length === 1 ? 'empresa' : 'empresas'}`
+                : `${companies.data.length} ${companies.data.length === 1 ? 'empresa' : 'empresas'}`
+              : '\u00a0'}
+          </div>
+        </div>
         <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
           Nova empresa
         </button>
       </div>
       <ErrorBanner message={error ?? companies.error} onRetry={companies.error ? companies.reload : undefined} />
       {companies.loading && !companies.data && <Loading />}
+      <div className="card filters filters-companies">
+        <Field label="Empresa">
+          <input
+            type="search"
+            value={filters.name}
+            onChange={(e) => setFilter('name', e.target.value)}
+            placeholder="Parte do nome ou do nome fantasia"
+          />
+        </Field>
+        <Field label="CNPJ">
+          <input value={filters.cnpj} onChange={(e) => setFilter('cnpj', e.target.value)} placeholder="Completo ou parcial" />
+        </Field>
+        <Field label="Cód. Cigam">
+          <input
+            inputMode="numeric"
+            maxLength={10}
+            value={filters.cigamCode}
+            onChange={(e) => setFilter('cigamCode', onlyDigits(e.target.value))}
+            placeholder="Parte do código"
+          />
+        </Field>
+        <Field label="Cód. Domínio">
+          <input
+            inputMode="numeric"
+            maxLength={10}
+            value={filters.dominioCode}
+            onChange={(e) => setFilter('dominioCode', onlyDigits(e.target.value))}
+            placeholder="Parte do código"
+          />
+        </Field>
+        <Field label="Status" group>
+          <Segmented
+            label="Status"
+            options={[
+              { value: '', label: 'Todos' },
+              { value: 'active', label: 'Ativo' },
+              { value: 'inactive', label: 'Inativo' },
+            ]}
+            value={filters.status}
+            onChange={(value) => setFilter('status', value)}
+          />
+        </Field>
+        <div className="filters-companies-end">
+          {hasFilters && (
+            <button type="button" className="link-button" onClick={() => setFilters(EMPTY_FILTERS)}>
+              Limpar filtros
+            </button>
+          )}
+        </div>
+      </div>
       {companies.data && (
         <div className="card table-wrapper">
           <table>
@@ -59,7 +158,7 @@ export function CompaniesPage() {
               </tr>
             </thead>
             <tbody>
-              {companies.data.map((company) => (
+              {shown.map((company) => (
                 <tr key={company.id}>
                   <td>{company.name}</td>
                   <td>{company.tradeName}</td>
@@ -82,10 +181,10 @@ export function CompaniesPage() {
                   </td>
                 </tr>
               ))}
-              {companies.data.length === 0 && (
+              {shown.length === 0 && (
                 <tr>
                   <td colSpan={8} className="muted empty-row">
-                    Nenhuma empresa cadastrada ainda.
+                    {hasFilters ? 'Nenhuma empresa encontrada com estes filtros.' : 'Nenhuma empresa cadastrada ainda.'}
                   </td>
                 </tr>
               )}

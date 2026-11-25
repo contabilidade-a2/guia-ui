@@ -2010,3 +2010,28 @@ button.filter-chip-main,
 td.nowrap {
   white-space: nowrap;
 }
+
+/* companies: name gets the most room; the codes are short; "Limpar filtros" at the end of the line */
+.filters-companies {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto auto;
+}
+
+.filters-companies .segmented button {
+  padding: 0 0.7rem;
+  font-size: 0.88rem;
+}
+
+.filters-companies-end {
+  align-self: end;
+  min-width: 7rem;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .filters-companies {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
