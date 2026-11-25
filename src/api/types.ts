@@ -301,11 +301,15 @@ export type InstallmentPlanSortField = 'NUMBER' | 'COMPANY' | 'CIGAM_NUMBER' | '
 export type HolderType = 'CHECKING' | 'INVESTMENT'
 export type BalanceStatus = 'PENDING' | 'DIVERGENT' | 'OK' | 'NO_MOVEMENT'
 
+/** Concluding a task while the previous phase is open: a warning to confirm, or refused. */
+export type PhaseDependency = 'WARN' | 'BLOCK'
+
 export interface ClosingAccess {
   allowed: boolean
   accountingAccess: boolean
   /** `yyyy-MM`: the first month the control covers. */
   firstCompetence: string
+  phaseDependency: PhaseDependency
 }
 
 /** A CNPJ root of the register, and the closing company made from it, if any. */
@@ -373,4 +377,56 @@ export interface ImportReport {
   balancesSaved: number
   holdersCreated: string[]
   ignored: { line: number; message: string }[]
+}
+
+// ---------- Controle contábil (etapa 2: tarefas do mês) ----------
+
+export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'NOT_APPLICABLE'
+export type TaskKind = 'MANUAL' | 'CALCULATED'
+
+export interface BalanceSummary {
+  total: number
+  ok: number
+  divergent: number
+  pending: number
+  noMovement: number
+  allChecked: boolean
+}
+
+export interface ClosingTask {
+  templateId: number
+  code: string
+  phase: number
+  name: string
+  description: string | null
+  kind: TaskKind
+  applicable: boolean
+  status: TaskStatus
+  /** Concluded by itself: every holder OK (the calculated task only). */
+  automatic: boolean
+  note: string | null
+  doneBy: string | null
+  doneAt: string | null
+  updatedBy: string | null
+  updatedAt: string | null
+  balances: BalanceSummary | null
+}
+
+export interface TaskHistoryItem {
+  fromStatus: TaskStatus
+  toStatus: TaskStatus
+  note: string | null
+  userName: string
+  at: string
+  automatic: boolean
+}
+
+export interface TaskTemplate {
+  id: number
+  code: string
+  phase: number
+  name: string
+  kind: TaskKind
+  appliesToAll: boolean
+  companyIds: number[]
 }

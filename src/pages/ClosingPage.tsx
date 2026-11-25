@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { errorMessage, fieldErrors } from '../api/client'
+import { ApiError, errorMessage, fieldErrors } from '../api/client'
 import { closingApi } from '../api/endpoints'
 import type {
   BalanceStatus,
@@ -10,7 +10,13 @@ import type {
   HolderBalance,
   HolderType,
   ImportReport,
+  ClosingCompany,
+  ClosingTask,
+  PhaseDependency,
   SortState,
+  TaskHistoryItem,
+  TaskStatus,
+  TaskTemplate,
 } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { CheckboxList } from '../components/CheckboxList'
@@ -22,6 +28,9 @@ import {
   BALANCE_STATUS_BADGES,
   BALANCE_STATUS_LABELS,
   HOLDER_TYPE_LABELS,
+  PHASE_TITLES,
+  TASK_STATUS_BADGES,
+  TASK_STATUS_LABELS,
   formatCnpjRoot,
   formatDateTime,
   formatMoney,
@@ -30,12 +39,12 @@ import {
 import { normalize, onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 
-type Tab = 'balances' | 'holders' | 'companies' | 'import'
+type Tab = 'month' | 'holders' | 'companies' | 'catalog' | 'import'
 
 /** Controle contábil, etapa 1: the monthly balance panel of the bank holders, and (administrator) its settings. */
 export function ClosingPage() {
   const { isAdmin } = useAuth()
-  const [tab, setTab] = useState<Tab>('balances')
+  const [tab, setTab] = useState<Tab>('month')
   const access = useLoad(() => closingApi.access(), [])
 
   return (
@@ -43,16 +52,16 @@ export function ClosingPage() {
       <div className="page-header">
         <div>
           <h1>Controle contábil</h1>
-          <div className="page-subtitle">Conferência mensal dos saldos dos portadores, por empresa</div>
         </div>
         {isAdmin && (
           <Segmented
             label="Seção"
             strong
             options={[
-              { value: 'balances', label: 'Saldos' },
+              { value: 'month', label: 'Fechamento' },
               { value: 'holders', label: 'Portadores' },
               { value: 'companies', label: 'Empresas e acesso' },
+              { value: 'catalog', label: 'Tarefas' },
               { value: 'import', label: 'Importar CSV' },
             ]}
             value={tab}
@@ -62,13 +71,408 @@ export function ClosingPage() {
       </div>
       <ErrorBanner message={access.error} onRetry={access.reload} />
       {access.loading && !access.data && <Loading />}
-      {access.data && tab === 'balances' && <BalancePanel firstCompetence={access.data.firstCompetence} />}
+      {access.data && tab === 'month' && <MonthView firstCompetence={access.data.firstCompetence} />}
       {access.data && tab === 'holders' && <HoldersSection />}
       {access.data && tab === 'companies' && (
-        <CompaniesSection accountingAccess={access.data.accountingAccess} onAccessChanged={access.reload} />
+        <CompaniesSection
+          accountingAccess={access.data.accountingAccess}
+          phaseDependency={access.data.phaseDependency}
+          onAccessChanged={access.reload}
+        />
       )}
+      {access.data && tab === 'catalog' && <CatalogSection />}
       {access.data && tab === 'import' && <ImportSection firstCompetence={access.data.firstCompetence} />}
     </>
+  )
+}
+
+// ---------- the month: tasks by phase (etapa 2) ----------
+
+/** Concluded out of the tasks that apply (not applicable ones don't count). */
+function progress(tasks: ClosingTask[]) {
+  const applicable = tasks.filter((task) => task.status !== 'NOT_APPLICABLE')
+  return { done: applicable.filter((task) => task.status === 'DONE').length, total: applicable.length }
+}
+
+function ProgressBar({ done, total }: { done: number; total: number }) {
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100)
+  return (
+    <span className="task-progress" aria-label={`${done} de ${total}`}>
+      <span className="task-progress-fill" style={{ width: `${percent}%` }} />
+    </span>
+  )
+}
+
+function MonthView({ firstCompetence }: { firstCompetence: string }) {
+  const [competence, setCompetence] = useState(() => defaultCompetence(firstCompetence))
+  const [companyId, setCompanyId] = useState<number | null>(null)
+  const companies = useLoad(() => closingApi.activeCompanies(), [])
+  const selectedCompany = companyId ?? companies.data?.[0]?.id ?? null
+  const validCompetence = competence !== '' && competence >= firstCompetence && competence <= todayIso().slice(0, 7)
+  const tasks = useLoad(
+    () => (selectedCompany && validCompetence ? closingApi.tasks(selectedCompany, competence) : Promise.resolve([])),
+    [selectedCompany, competence],
+  )
+
+  return (
+    <>
+      <div className="card filters filters-month">
+        <Field label="Competência">
+          <MonthInput value={competence} onChange={setCompetence} label="Competência" />
+        </Field>
+        <Field label="Empresa">
+          <select value={selectedCompany ?? ''} onChange={(e) => setCompanyId(Number(e.target.value))}>
+            {(companies.data ?? []).map((company: ClosingCompany) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      {competence !== '' && !validCompetence && (
+        <div className="banner banner-error">
+          A competência vai de {firstCompetence.slice(5)}/{firstCompetence.slice(0, 4)} até o mês atual.
+        </div>
+      )}
+      {companies.data?.length === 0 && <div className="banner banner-error">Nenhuma empresa do fechamento está ativa.</div>}
+      <ErrorBanner message={tasks.error ?? companies.error} onRetry={tasks.error ? tasks.reload : undefined} />
+      {tasks.loading && !tasks.data && <Loading />}
+      {tasks.data && selectedCompany && validCompetence && tasks.data.length > 0 && (
+        <TaskList
+          key={`${selectedCompany}:${competence}`}
+          initial={tasks.data}
+          companyId={selectedCompany}
+          competence={competence}
+          reload={tasks.reload}
+        />
+      )}
+    </>
+  )
+}
+
+interface TaskListProps {
+  initial: ClosingTask[]
+  companyId: number
+  competence: string
+  /** Reloads the tasks (after a balance changes, the balance task may conclude by itself). */
+  reload: () => void
+}
+
+function TaskList({ initial, companyId, competence, reload }: TaskListProps) {
+  const [tasks, setTasks] = useState(initial)
+  const [lastInitial, setLastInitial] = useState(initial)
+  if (initial !== lastInitial) {
+    setLastInitial(initial)
+    setTasks(initial)
+  }
+  const [error, setError] = useState<string | null>(null)
+  const [history, setHistory] = useState<ClosingTask | null>(null)
+  const total = progress(tasks)
+  const phases = [...new Set(tasks.map((task) => task.phase))].sort()
+
+  async function change(task: ClosingTask, status: TaskStatus, note: string | null) {
+    setError(null)
+    let text = note?.trim() ? note.trim() : null
+    if (task.kind === 'CALCULATED' && status === 'DONE' && !task.automatic && !text) {
+      const typed = window.prompt('Ainda há portadores pendentes ou divergentes. Para concluir mesmo assim, escreva uma observação:')
+      if (!typed?.trim()) return
+      text = typed.trim()
+    }
+    const send = (confirmDependency: boolean) =>
+      closingApi.changeTask(task.templateId, { companyId, competence, status, note: text, confirmDependency })
+    try {
+      let saved: ClosingTask
+      try {
+        saved = await send(false)
+      } catch (caught) {
+        if (!(caught instanceof ApiError) || caught.status !== 428 || !window.confirm(caught.message)) throw caught
+        saved = await send(true)
+      }
+      setTasks((current) => current.map((item) => (item.templateId === saved.templateId ? saved : item)))
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 428) return
+      setError(`${task.code}: ${errorMessage(caught)}`)
+    }
+  }
+
+  return (
+    <>
+      <div className="card closing-summary task-summary">
+        <div className="task-summary-total">
+          <strong>
+            {total.done} de {total.total}
+          </strong>{' '}
+          tarefas concluídas
+          <ProgressBar {...total} />
+        </div>
+        <div className="task-summary-phases">
+          {phases.map((phase) => {
+            const count = progress(tasks.filter((task) => task.phase === phase))
+            return (
+              <span key={phase} className={`badge ${count.done === count.total ? 'badge-paid' : 'badge-archived'}`}>
+                Fase {phase}: {count.done} de {count.total}
+              </span>
+            )
+          })}
+        </div>
+      </div>
+      <ErrorBanner message={error} />
+      {phases.map((phase) => (
+        <TaskPhase
+          key={phase}
+          phase={phase}
+          tasks={tasks.filter((task) => task.phase === phase)}
+          companyId={companyId}
+          competence={competence}
+          onChange={change}
+          onHistory={setHistory}
+          onBalancesSaved={reload}
+        />
+      ))}
+      {history && (
+        <TaskHistoryModal task={history} companyId={companyId} competence={competence} onClose={() => setHistory(null)} />
+      )}
+    </>
+  )
+}
+
+interface TaskPhaseProps {
+  phase: number
+  tasks: ClosingTask[]
+  companyId: number
+  competence: string
+  onChange: (task: ClosingTask, status: TaskStatus, note: string | null) => void
+  onHistory: (task: ClosingTask) => void
+  onBalancesSaved: () => void
+}
+
+function TaskPhase({ phase, tasks, companyId, competence, onChange, onHistory, onBalancesSaved }: TaskPhaseProps) {
+  const [open, setOpen] = useState(true)
+  const count = progress(tasks)
+  return (
+    <section className="card closing-group">
+      <button type="button" className="closing-group-header" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="closing-group-caret" aria-hidden="true">
+          {open ? '▾' : '▸'}
+        </span>
+        <h2>{PHASE_TITLES[phase] ?? `Fase ${phase}`}</h2>
+        <span className="task-phase-count">
+          {count.done} de {count.total}
+          <ProgressBar {...count} />
+        </span>
+      </button>
+      {open && (
+        <div className="table-wrapper">
+          <table className="closing-table task-table">
+            <thead>
+              <tr>
+                <th className="task-check" aria-label="Concluída" />
+                <th>Tarefa</th>
+                <th>Status</th>
+                <th>Concluída por</th>
+                <th>Observação</th>
+                <th aria-label="Ações" />
+              </tr>
+            </thead>
+            <tbody>
+              {tasks.map((task) => (
+                <TaskLine
+                  key={task.templateId}
+                  task={task}
+                  companyId={companyId}
+                  competence={competence}
+                  onChange={onChange}
+                  onHistory={onHistory}
+                  onBalancesSaved={onBalancesSaved}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
+interface TaskLineProps {
+  task: ClosingTask
+  companyId: number
+  competence: string
+  onChange: (task: ClosingTask, status: TaskStatus, note: string | null) => void
+  onHistory: (task: ClosingTask) => void
+  onBalancesSaved: () => void
+}
+
+function TaskLine({ task, companyId, competence, onChange, onHistory, onBalancesSaved }: TaskLineProps) {
+  const [note, setNote] = useState(task.note ?? '')
+  const [lastNote, setLastNote] = useState(task.note)
+  if (task.note !== lastNote) {
+    setLastNote(task.note)
+    setNote(task.note ?? '')
+  }
+  const [balancesOpen, setBalancesOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLSpanElement>(null)
+  // The status menu closes on a click outside it or on Esc, like the other menus.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onPointerDown = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && setMenuOpen(false)
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen])
+  const locked = !task.applicable || task.automatic
+  const done = task.status === 'DONE'
+  const others = (['PENDING', 'IN_PROGRESS', 'DONE', 'NOT_APPLICABLE'] as TaskStatus[]).filter((status) => status !== task.status)
+  const balances = task.balances
+
+  return (
+    <>
+      <tr className={`task-row${!task.applicable ? ' task-row-na' : ''}`}>
+        <td className="task-check">
+          <input
+            type="checkbox"
+            aria-label={`${task.code}: concluída`}
+            checked={done}
+            disabled={locked}
+            title={task.automatic ? 'Concluída sozinha: todos os portadores estão OK' : undefined}
+            onChange={(e) => onChange(task, e.target.checked ? 'DONE' : 'PENDING', note)}
+          />
+        </td>
+        <td>
+          <div className="task-name" title={task.description ?? undefined}>
+            <span className="closing-code">{task.code}</span> {task.name}
+          </div>
+          {balances && task.applicable && (
+            <div className="task-balances">
+              <span className="muted">
+                {balances.total === 0
+                  ? 'Nenhum portador no mês'
+                  : `${balances.ok + balances.noMovement} de ${balances.total} OK` +
+                    (balances.divergent ? ` · ${balances.divergent} ${balances.divergent === 1 ? 'divergente' : 'divergentes'}` : '') +
+                    (balances.pending ? ` · ${balances.pending} ${balances.pending === 1 ? 'pendente' : 'pendentes'}` : '')}
+              </span>
+              <button type="button" className="link-button" aria-expanded={balancesOpen} onClick={() => setBalancesOpen(!balancesOpen)}>
+                {balancesOpen ? 'Fechar saldos ▴' : 'Ver saldos ▾'}
+              </button>
+            </div>
+          )}
+        </td>
+        <td>
+          <span className={`badge ${TASK_STATUS_BADGES[task.status]}`}>{TASK_STATUS_LABELS[task.status]}</span>
+        </td>
+        <td className="task-who">
+          {task.automatic ? (
+            <span className="muted">Automático</span>
+          ) : done && task.doneBy && task.doneAt ? (
+            <>
+              {task.doneBy}
+              <span className="muted task-when">{formatDateTime(task.doneAt)}</span>
+            </>
+          ) : (
+            <span className="muted">—</span>
+          )}
+        </td>
+        <td>
+          {task.applicable && (
+            <input
+              className="closing-note"
+              aria-label={`${task.code}: observação`}
+              maxLength={500}
+              value={note}
+              placeholder="—"
+              onChange={(e) => setNote(e.target.value)}
+              onBlur={() => note.trim() !== (task.note ?? '') && onChange(task, task.status, note)}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            />
+          )}
+        </td>
+        <td className="row-actions task-actions">
+          <button type="button" className="icon-action" title="Histórico" aria-label={`Histórico de ${task.code}`} onClick={() => onHistory(task)}>
+            <HistoryIcon />
+          </button>
+          {!locked && (
+            <span className="task-menu-wrapper" ref={menuRef}>
+              <button
+                type="button"
+                className="icon-action"
+                title="Outros status"
+                aria-label={`Outros status de ${task.code}`}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(!menuOpen)}
+              >
+                ⋯
+              </button>
+              {menuOpen && (
+                <span className="task-menu" role="menu">
+                  {others.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onChange(task, status, note)
+                      }}
+                    >
+                      {TASK_STATUS_LABELS[status]}
+                    </button>
+                  ))}
+                </span>
+              )}
+            </span>
+          )}
+        </td>
+      </tr>
+      {balancesOpen && (
+        <tr className="task-balances-row">
+          <td colSpan={6}>
+            <BalancePanel competence={competence} companyId={companyId} onSaved={onBalancesSaved} />
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function HistoryIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function TaskHistoryModal({ task, companyId, competence, onClose }: { task: ClosingTask; companyId: number; competence: string; onClose: () => void }) {
+  const items = useLoad(() => closingApi.taskHistory(task.templateId, companyId, competence), [task.templateId])
+  return (
+    <Modal title={`Histórico · ${task.code} ${task.name}`} onClose={onClose}>
+      <ErrorBanner message={items.error} />
+      {items.loading && <Loading />}
+      {items.data && items.data.length === 0 && <p className="muted">Nenhuma alteração neste mês.</p>}
+      {items.data && items.data.length > 0 && (
+        <ul className="task-history">
+          {items.data.map((item: TaskHistoryItem, index) => (
+            <li key={index}>
+              <span className="task-history-when">{formatDateTime(item.at)}</span>
+              <span>
+                <strong>{item.automatic ? 'Automático' : item.userName}</strong> · {TASK_STATUS_LABELS[item.fromStatus]} →{' '}
+                {TASK_STATUS_LABELS[item.toStatus]}
+                {item.note && <span className="muted task-history-note">{item.note}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
   )
 }
 
@@ -438,9 +842,15 @@ function StatusCounts({ rows }: { rows: HolderBalance[] }) {
   )
 }
 
-function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
-  const [competence, setCompetence] = useState(() => defaultCompetence(firstCompetence))
-  const [companyId, setCompanyId] = useState<number | null>(null)
+interface BalancePanelProps {
+  competence: string
+  companyId: number
+  /** After a balance is saved: the task list refreshes the balance task. */
+  onSaved: () => void
+}
+
+/** The balances of the bank holders (task F1-08), opened inside the month's task list for its company and month. */
+function BalancePanel({ competence, companyId, onSaved }: BalancePanelProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('OPEN')
   const [holderFilter, setHolderFilter] = useState<HolderFilter>(EMPTY_HOLDER_FILTER)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -450,13 +860,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
   const [touched, setTouched] = useState<Set<number>>(new Set())
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const companies = useLoad(() => closingApi.activeCompanies(), [])
-  const selectedCompany = companyId ?? companies.data?.[0]?.id ?? null
-  const validCompetence = competence !== '' && competence >= firstCompetence && competence <= todayIso().slice(0, 7)
-  const balances = useLoad(
-    () => (selectedCompany && validCompetence ? closingApi.balances(selectedCompany, competence) : Promise.resolve([])),
-    [selectedCompany, competence],
-  )
+  const balances = useLoad(() => closingApi.balances(companyId, competence), [companyId, competence])
 
   // A new load (another month or company) replaces the rows edited on screen.
   const [loaded, setLoaded] = useState(balances.data)
@@ -469,7 +873,6 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
   }
 
   async function save(row: HolderBalance, change: Partial<HolderBalance>) {
-    if (!selectedCompany) return
     const next = { ...row, ...change }
     const replace = (value: HolderBalance) =>
       setRows((current) => current.map((item) => (item.holder.id === row.holder.id ? value : item)))
@@ -479,7 +882,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
     try {
       const saved = await closingApi.saveBalance({
         holderId: row.holder.id,
-        companyId: selectedCompany,
+        companyId,
         competence,
         imported: next.imported,
         noMovement: next.noMovement,
@@ -489,6 +892,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
       })
       replace(saved)
       setTouched((current) => new Set(current).add(row.holder.id))
+      onSaved()
     } catch (caught) {
       replace(row)
       setSaveError(`${row.holder.code}: ${errorMessage(caught)}`)
@@ -508,19 +912,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
 
   return (
     <>
-      <div className="card filters filters-closing">
-        <Field label="Competência">
-          <MonthInput value={competence} onChange={setCompetence} label="Competência" />
-        </Field>
-        <Field label="Empresa">
-          <select value={selectedCompany ?? ''} onChange={(e) => setCompanyId(Number(e.target.value))}>
-            {(companies.data ?? []).map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+      <div className="filters filters-balances">
         <Field label="Status">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
             <option value="OPEN">Pendentes e divergentes</option>
@@ -556,17 +948,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
           </div>
         )}
       </div>
-      {competence !== '' && !validCompetence && (
-        <div className="banner banner-error">
-          A competência vai de {firstCompetence.slice(5)}/{firstCompetence.slice(0, 4)} até o mês atual.
-        </div>
-      )}
-      {companies.data?.length === 0 && (
-        <div className="banner banner-error">
-          Nenhuma empresa do fechamento está ativa. O Administrador as cadastra em "Empresas e acesso".
-        </div>
-      )}
-      <ErrorBanner message={saveError ?? balances.error ?? companies.error} onRetry={balances.error ? balances.reload : undefined} />
+      <ErrorBanner message={saveError ?? balances.error} onRetry={balances.error ? balances.reload : undefined} />
       {balances.loading && rows.length === 0 && <Loading />}
       {rows.length > 0 && (
         <div className="closing-summary card">
@@ -577,7 +959,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
           <StatusCounts rows={rows} />
         </div>
       )}
-      {!balances.loading && balances.data && rows.length === 0 && validCompetence && selectedCompany && (
+      {!balances.loading && balances.data && rows.length === 0 && (
         <p className="muted">Nenhum portador vinculado a esta empresa.</p>
       )}
       {groups.map((group) => {
@@ -785,10 +1167,6 @@ function HoldersSection() {
   return (
     <>
       <div className="closing-section-header">
-        <p className="muted">
-          Contas correntes e aplicações conferidas no fechamento. Os códigos seguem o sistema financeiro (C01, C1…);
-          T01 e T02 são históricos de transferências e não entram aqui.
-        </p>
         <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
           Novo portador
         </button>
@@ -942,7 +1320,7 @@ function HolderForm({ holder, companies, onClose, onSaved }: HolderFormProps) {
       <form className="form" onSubmit={submit}>
         <ErrorBanner message={error} />
         <div className="form-row">
-          <Field label="Código" error={errors.code} hint="Letras e números, como C07">
+          <Field label="Código" error={errors.code}>
             <input
               required
               maxLength={7}
@@ -985,7 +1363,7 @@ function HolderForm({ holder, companies, onClose, onSaved }: HolderFormProps) {
         </Field>
         <label className="checkbox">
           <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />
-          Ativo (inativo sai do painel dos meses seguintes)
+          Ativo
         </label>
         <div className="form-actions">
           <button type="button" className="button" onClick={onClose}>
@@ -1002,7 +1380,13 @@ function HolderForm({ holder, companies, onClose, onSaved }: HolderFormProps) {
 
 // ---------- closing companies and access (administrator) ----------
 
-function CompaniesSection({ accountingAccess, onAccessChanged }: { accountingAccess: boolean; onAccessChanged: () => void }) {
+interface CompaniesSectionProps {
+  accountingAccess: boolean
+  phaseDependency: PhaseDependency
+  onAccessChanged: () => void
+}
+
+function CompaniesSection({ accountingAccess, phaseDependency, onAccessChanged }: CompaniesSectionProps) {
   const options = useLoad(() => closingApi.companyOptions(), [])
   const [sort, setSort] = useState<SortState<ClosingCompanySortField> | null>(null)
   const [editing, setEditing] = useState<ClosingCompanyOption | null>(null)
@@ -1010,6 +1394,20 @@ function CompaniesSection({ accountingAccess, onAccessChanged }: { accountingAcc
   /** The choice shown at once, until the reloaded setting arrives. */
   const [pending, setPending] = useState<boolean | null>(null)
   const checked = pending ?? accountingAccess
+
+  const [dependency, setDependency] = useState(phaseDependency)
+
+  async function changeDependency(mode: PhaseDependency) {
+    setError(null)
+    setDependency(mode)
+    try {
+      await closingApi.setPhaseDependency(mode)
+      onAccessChanged()
+    } catch (caught) {
+      setError(errorMessage(caught))
+      setDependency(phaseDependency)
+    }
+  }
 
   async function toggleAccess(enabled: boolean) {
     setError(null)
@@ -1030,16 +1428,14 @@ function CompaniesSection({ accountingAccess, onAccessChanged }: { accountingAcc
           <input type="checkbox" checked={checked} onChange={(e) => toggleAccess(e.target.checked)} />
           Liberar o Controle contábil para o perfil Contábil
         </label>
-        <p className="muted">
-          O Contábil consulta e lança saldos; cadastros, importação e esta liberação continuam só com o Administrador.
-          A mudança vale no próximo login de quem já está no sistema.
-        </p>
+        <Field label="Concluir uma tarefa com a fase anterior aberta" className="closing-dependency">
+          <select value={dependency} onChange={(e) => changeDependency(e.target.value as PhaseDependency)}>
+            <option value="WARN">Avisar e permitir</option>
+            <option value="BLOCK">Bloquear</option>
+          </select>
+        </Field>
       </div>
       <ErrorBanner message={error ?? options.error} onRetry={options.error ? options.reload : undefined} />
-      <p className="muted">
-        O fechamento é feito pela matriz: cada raiz de CNPJ do cadastro de empresas vira uma empresa do fechamento, com
-        as filiais juntas. Dê um nome curto às que entram no controle.
-      </p>
       {options.loading && !options.data && <Loading />}
       {options.data && (
         <div className="card table-wrapper">
@@ -1120,13 +1516,131 @@ function ClosingCompanyForm({ option, onClose, onSaved }: { option: ClosingCompa
         <p className="muted">
           Matriz no cadastro: {option.headOfficeName} ({option.unitCount} {option.unitCount === 1 ? 'unidade' : 'unidades'})
         </p>
-        <Field label="Nome no fechamento" hint="Nome curto, usado no painel e no CSV de importação">
+        <Field label="Nome no fechamento">
           <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <label className="checkbox">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
           Ativa no controle
         </label>
+        <div className="form-actions">
+          <button type="button" className="button" onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="submit" className="button button-primary" disabled={saving}>
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+// ---------- task catalog: which companies do each task (administrator) ----------
+
+function CatalogSection() {
+  const templates = useLoad(() => closingApi.taskTemplates(), [])
+  const companies = useLoad(() => closingApi.companyOptions(), [])
+  const [editing, setEditing] = useState<TaskTemplate | null>(null)
+  const closingCompanies = (companies.data ?? []).filter((option) => option.id !== null) as (ClosingCompanyOption & { id: number })[]
+  const companyName = (id: number) => closingCompanies.find((company) => company.id === id)?.name ?? `#${id}`
+
+  return (
+    <>
+      <ErrorBanner message={templates.error ?? companies.error} onRetry={templates.error ? templates.reload : undefined} />
+      {templates.loading && !templates.data && <Loading />}
+      {templates.data && (
+        <div className="card table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Tarefa</th>
+                <th>Fase</th>
+                <th>Empresas</th>
+                <th aria-label="Ações" />
+              </tr>
+            </thead>
+            <tbody>
+              {templates.data.map((template) => (
+                <tr key={template.id}>
+                  <td className="closing-code">{template.code}</td>
+                  <td>{template.name}</td>
+                  <td>{template.phase}</td>
+                  <td>{template.appliesToAll ? 'Todas' : template.companyIds.map(companyName).join(', ')}</td>
+                  <td className="row-actions">
+                    <IconButton label={`Editar ${template.code}`} onClick={() => setEditing(template)}>
+                      <EditIcon />
+                    </IconButton>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && (
+        <TemplateCompaniesForm
+          template={editing}
+          companies={closingCompanies}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null)
+            templates.reload()
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+interface TemplateCompaniesFormProps {
+  template: TaskTemplate
+  companies: { id: number; name: string | null }[]
+  onClose: () => void
+  onSaved: () => void
+}
+
+function TemplateCompaniesForm({ template, companies, onClose, onSaved }: TemplateCompaniesFormProps) {
+  const [all, setAll] = useState(template.appliesToAll)
+  const [selected, setSelected] = useState(template.companyIds.map(String))
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      await closingApi.setTaskCompanies(template.id, all, all ? [] : selected.map(Number))
+      onSaved()
+    } catch (caught) {
+      setError(errorMessage(caught))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title={`${template.code} ${template.name}`} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <ErrorBanner message={error} />
+        <label className="checkbox">
+          <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
+          Todas as empresas
+        </label>
+        {!all && (
+          <Field label="Empresas" group>
+            <CheckboxList
+              options={companies.map((company) => ({ value: String(company.id), label: company.name ?? '' }))}
+              selected={selected}
+              onChange={setSelected}
+              emptyText="Nenhuma empresa do fechamento cadastrada."
+              selectAllText="Marcar todas"
+              clearAllText="Desmarcar todas"
+            />
+          </Field>
+        )}
         <div className="form-actions">
           <button type="button" className="button" onClick={onClose}>
             Cancelar

@@ -2,6 +2,11 @@ import { firstDayOfMonth, lastDayOfMonth } from '../lib/format'
 import { request } from './client'
 import type {
   BankHolder,
+  ClosingTask,
+  PhaseDependency,
+  TaskHistoryItem,
+  TaskStatus,
+  TaskTemplate,
   BankHolderInput,
   CalendarDay,
   ClosingAccess,
@@ -173,4 +178,20 @@ export const closingApi = {
     request<HolderBalance[]>('GET', `/api/closing/balances?companyId=${companyId}&competence=${competence}`),
   saveBalance: (input: HolderBalanceInput) => request<HolderBalance>('PUT', '/api/closing/balances', input),
   importCsv: (competence: string, csv: string) => request<ImportReport>('POST', '/api/closing/import', { competence, csv }),
+  tasks: (companyId: number, competence: string) =>
+    request<ClosingTask[]>('GET', `/api/closing/tasks?companyId=${companyId}&competence=${competence}`),
+  /** A 428 answer means the previous phase is open: ask the user and send again with `confirmDependency`. */
+  changeTask: (
+    templateId: number,
+    input: { companyId: number; competence: string; status: TaskStatus; note: string | null; confirmDependency?: boolean },
+  ) => request<ClosingTask>('PUT', `/api/closing/tasks/${templateId}`, input),
+  taskHistory: (templateId: number, companyId: number, competence: string) =>
+    request<TaskHistoryItem[]>(
+      'GET',
+      `/api/closing/tasks/${templateId}/history?companyId=${companyId}&competence=${competence}`,
+    ),
+  taskTemplates: () => request<TaskTemplate[]>('GET', '/api/closing/task-templates'),
+  setTaskCompanies: (id: number, appliesToAll: boolean, companyIds: number[]) =>
+    request<TaskTemplate>('PUT', `/api/closing/task-templates/${id}/companies`, { appliesToAll, companyIds }),
+  setPhaseDependency: (mode: PhaseDependency) => request<void>('PUT', '/api/closing/phase-dependency', { mode }),
 }

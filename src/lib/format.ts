@@ -1,4 +1,4 @@
-import type { BalanceStatus, BrazilianState, HistoryEventType, InstallmentOrigin, InstallmentStatus, SendStatus, SlipStatus, UserRole, HolderType } from '../api/types'
+import type { BalanceStatus, BrazilianState, HistoryEventType, InstallmentOrigin, InstallmentStatus, SendStatus, SlipStatus, UserRole, HolderType, TaskStatus } from '../api/types'
 
 const TIME_ZONE = 'America/Sao_Paulo'
 
@@ -193,4 +193,25 @@ export const HOLDER_TYPE_LABELS: Record<HolderType, string> = {
 /** `12345678` → `12.345.678` (the root of a CNPJ). */
 export function formatCnpjRoot(root: string): string {
   return `${root.slice(0, 2)}.${root.slice(2, 5)}.${root.slice(5, 8)}`
+}
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  PENDING: 'Pendente',
+  IN_PROGRESS: 'Em andamento',
+  DONE: 'Concluído',
+  NOT_APPLICABLE: 'Não se aplica',
+}
+
+/** The system's status colours, plus blue for "Em andamento" (decided by the user on 25/11/2026). */
+export const TASK_STATUS_BADGES: Record<TaskStatus, string> = {
+  PENDING: 'badge-pending',
+  IN_PROGRESS: 'badge-progress',
+  DONE: 'badge-paid',
+  NOT_APPLICABLE: 'badge-archived',
+}
+
+export const PHASE_TITLES: Record<number, string> = {
+  1: 'Fase 1 — Importações e confrontos',
+  2: 'Fase 2 — Conciliação',
+  3: 'Fase 3 — Encerramento mensal',
 }

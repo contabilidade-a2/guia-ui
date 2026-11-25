@@ -21,6 +21,8 @@
   --pending: #7a4a00;
   --pending-strong: #b26b00;
   --pending-soft: #fff4db;
+  --progress: #1f4f8a;
+  --progress-soft: #e3edf9;
   --paid: #1e5e38;
   --paid-strong: #2f7d4f;
   --paid-soft: #e3f3e8;
@@ -66,6 +68,8 @@
   --pending: #f0b155;
   --pending-strong: #e39a1f;
   --pending-soft: #3a2c10;
+  --progress: #8fb8ee;
+  --progress-soft: #17263b;
   --paid: #7fcf9c;
   --paid-strong: #3fa56a;
   --paid-soft: #16301f;
@@ -1191,6 +1195,11 @@ input[type='radio'] {
 .badge-sent {
   background: var(--primary-soft);
   color: var(--primary-dark);
+}
+
+.badge-progress {
+  background: var(--progress-soft);
+  color: var(--progress);
 }
 
 .badge-archived {
@@ -2324,7 +2333,7 @@ td.nowrap {
 .closing-section-header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -2424,4 +2433,208 @@ td.nowrap {
 
 .closing-table .closing-note {
   min-width: 7rem;
+}
+
+/* ---------- Controle contábil: tasks of the month ---------- */
+
+.filters-month {
+  grid-template-columns: 8rem minmax(0, 22rem);
+}
+
+.filters-balances {
+  grid-template-columns: minmax(0, 16rem) auto;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.task-summary-total {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.task-summary-phases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.task-progress {
+  display: inline-block;
+  width: 7rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--neutral-soft);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.task-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+}
+
+.task-phase-count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.task-table .task-check {
+  width: 2.25rem;
+  text-align: center;
+}
+
+.task-name {
+  font-weight: 500;
+}
+
+.task-name .closing-code {
+  margin-right: 0.35rem;
+  color: var(--subtle);
+  font-weight: 600;
+}
+
+.task-row-na .task-name {
+  color: var(--muted);
+}
+
+.task-balances {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.task-who {
+  white-space: nowrap;
+}
+
+.task-when {
+  display: block;
+  font-size: 0.8rem;
+}
+
+.task-actions {
+  white-space: nowrap;
+}
+
+.task-menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.task-menu {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  top: calc(100% + 4px);
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.task-menu button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.task-menu button:hover {
+  background: var(--surface-muted);
+}
+
+.task-balances-row > td {
+  background: var(--surface-muted);
+  padding: 0.75rem !important;
+}
+
+.task-balances-row .closing-group {
+  margin-bottom: 0.75rem;
+}
+
+.task-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.task-history li {
+  display: grid;
+  grid-template-columns: 9.5rem 1fr;
+  gap: 0.75rem;
+}
+
+.task-history-when {
+  white-space: nowrap;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.task-history-note {
+  display: block;
+}
+
+.closing-dependency {
+  margin-top: 1rem;
+  max-width: 22rem;
+}
+
+/* the three phases line up: fixed column widths */
+.task-table {
+  table-layout: fixed;
+}
+
+.task-table th:nth-child(1) {
+  width: 2.5rem;
+}
+
+.task-table th:nth-child(3) {
+  width: 8.5rem;
+}
+
+.task-table th:nth-child(4) {
+  width: 11rem;
+}
+
+.task-table th:nth-child(5) {
+  width: 15rem;
+}
+
+.task-table th:nth-child(6) {
+  width: 5rem;
+}
+
+.task-table .closing-note {
+  min-width: 0;
+}
+
+/* the balance table inside the task keeps its own layout */
+.task-balances-row .closing-table {
+  table-layout: auto;
+}
+
+.task-balances-row .closing-table th {
+  width: auto;
+}
+
+.filters-balances .filters-toggle {
+  justify-self: start;
 }
