@@ -2,11 +2,11 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { errorMessage, fieldErrors } from '../api/client'
 import { companiesApi, usersApi } from '../api/endpoints'
-import type { Company, User } from '../api/types'
+import type { Company, SortState, User } from '../api/types'
 import { CheckboxList } from '../components/CheckboxList'
 import { normalize, onlyDigits } from '../lib/text'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
-import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
+import { ErrorBanner, Field, Loading, Modal, Segmented, SortableHeader } from '../components/ui'
 import { useLoad } from '../lib/useLoad'
 
 /** Names of the users notified about a company's slips, for the list column. */
@@ -48,6 +48,47 @@ function matches(company: Company, filters: CompanyFilters): boolean {
   return true
 }
 
+type CompanySortField = 'NAME' | 'TRADE_NAME' | 'CNPJ' | 'CIGAM_CODE' | 'DOMINIO_CODE' | 'STATUS'
+
+const byText = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+
+/** Digits kept as text compare as numbers: the shorter one is the smaller (54 before 3359, 001 before 010). */
+const byCode = (a: string, b: string) => a.length - b.length || a.localeCompare(b)
+
+/** A value that may be missing: missing ones always go last, whichever the direction. */
+function compareOptional(a: string | null, b: string | null, compare: (a: string, b: string) => number, ascending: boolean) {
+  if (!a || !b) return a ? -1 : b ? 1 : 0
+  return ascending ? compare(a, b) : compare(b, a)
+}
+
+/**
+ * Orders the (already filtered) list by a clicked column, like the slip list (asked by the user on 25/11/2026).
+ * The whole list is here, so it is sorted in the browser. Ties, and no column, keep the order by name.
+ */
+function sortCompanies(companies: Company[], sort: SortState<CompanySortField> | null): Company[] {
+  if (!sort) return companies
+  const { field, ascending } = sort
+  const sign = ascending ? 1 : -1
+  const compare = (a: Company, b: Company): number => {
+    switch (field) {
+      case 'NAME':
+        return sign * byText(a.name, b.name)
+      case 'TRADE_NAME':
+        return compareOptional(a.tradeName, b.tradeName, byText, ascending)
+      case 'CNPJ':
+        return sign * a.cnpj.localeCompare(b.cnpj)
+      case 'CIGAM_CODE':
+        return compareOptional(a.cigamCode, b.cigamCode, byCode, ascending)
+      case 'DOMINIO_CODE':
+        return compareOptional(a.dominioCode, b.dominioCode, byCode, ascending)
+      case 'STATUS':
+        // Ascending: Ativo, then Inativo (as the labels read).
+        return sign * (Number(!a.active) - Number(!b.active))
+    }
+  }
+  return [...companies].sort((a, b) => compare(a, b) || byText(a.name, b.name))
+}
+
 export function CompaniesPage() {
   const companies = useLoad(() => companiesApi.list(), [])
   const users = useLoad(() => usersApi.list(), [])
@@ -56,7 +97,11 @@ export function CompaniesPage() {
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<CompanyFilters>(EMPTY_FILTERS)
   const hasFilters = Object.values(filters).some(Boolean)
-  const shown = (companies.data ?? []).filter((company) => matches(company, filters))
+  const [sort, setSort] = useState<SortState<CompanySortField> | null>(null)
+  const shown = sortCompanies(
+    (companies.data ?? []).filter((company) => matches(company, filters)),
+    sort,
+  )
 
   function setFilter<K extends keyof CompanyFilters>(name: K, value: CompanyFilters[K]) {
     setFilters((current) => ({ ...current, [name]: value }))
@@ -147,12 +192,12 @@ export function CompaniesPage() {
           <table>
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>Nome fantasia</th>
-                <th>CNPJ</th>
-                <th>Cód. Cigam</th>
-                <th>Cód. Domínio</th>
-                <th>Status</th>
+                <SortableHeader label="Nome" field="NAME" sort={sort} onSort={setSort} />
+                <SortableHeader label="Nome fantasia" field="TRADE_NAME" sort={sort} onSort={setSort} />
+                <SortableHeader label="CNPJ" field="CNPJ" sort={sort} onSort={setSort} />
+                <SortableHeader label="Cód. Cigam" field="CIGAM_CODE" sort={sort} onSort={setSort} />
+                <SortableHeader label="Cód. Domínio" field="DOMINIO_CODE" sort={sort} onSort={setSort} />
+                <SortableHeader label="Status" field="STATUS" sort={sort} onSort={setSort} />
                 <th>Usuários notificados</th>
                 <th aria-label="Ações" />
               </tr>
