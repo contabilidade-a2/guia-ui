@@ -1,7 +1,15 @@
 import { firstDayOfMonth, lastDayOfMonth } from '../lib/format'
 import { request } from './client'
 import type {
+  BankHolder,
+  BankHolderInput,
   CalendarDay,
+  ClosingAccess,
+  ClosingCompany,
+  ClosingCompanyOption,
+  HolderBalance,
+  HolderBalanceInput,
+  ImportReport,
   Company,
   CompanyInput,
   DeletedSlip,
@@ -147,4 +155,22 @@ export const usageApi = {
   summary: (month: string) => request<UsageSummary>('GET', `/api/usage/summary${month ? `?month=${month}` : ''}`),
   /** E-mails left today (read from Brevo) and the database size, against the free plans' limits. */
   limits: () => request<PlanLimits>('GET', '/api/usage/limits'),
+}
+
+export const closingApi = {
+  access: () => request<ClosingAccess>('GET', '/api/closing/access'),
+  setAccountingAccess: (accountingAccess: boolean) => request<void>('PUT', '/api/closing/access', { accountingAccess }),
+  companyOptions: () => request<ClosingCompanyOption[]>('GET', '/api/closing/companies'),
+  saveCompany: (cnpjRoot: string, name: string, active: boolean) =>
+    request<ClosingCompany>('PUT', `/api/closing/companies/${cnpjRoot}`, { name, active }),
+  activeCompanies: () => request<ClosingCompany[]>('GET', '/api/closing/companies/active'),
+  holders: () => request<BankHolder[]>('GET', '/api/closing/holders'),
+  createHolder: (input: BankHolderInput) => request<BankHolder>('POST', '/api/closing/holders', input),
+  updateHolder: (id: number, input: BankHolderInput) => request<BankHolder>('PUT', `/api/closing/holders/${id}`, input),
+  deleteHolder: (id: number) => request<void>('DELETE', `/api/closing/holders/${id}`),
+  /** `competence` as `yyyy-MM`. */
+  balances: (companyId: number, competence: string) =>
+    request<HolderBalance[]>('GET', `/api/closing/balances?companyId=${companyId}&competence=${competence}`),
+  saveBalance: (input: HolderBalanceInput) => request<HolderBalance>('PUT', '/api/closing/balances', input),
+  importCsv: (competence: string, csv: string) => request<ImportReport>('POST', '/api/closing/import', { competence, csv }),
 }

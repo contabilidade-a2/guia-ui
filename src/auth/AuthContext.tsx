@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { setSessionExpiredHandler, tokenStore } from '../api/client'
-import { authApi } from '../api/endpoints'
+import { authApi, closingApi } from '../api/endpoints'
 import type { User } from '../api/types'
 
 interface AuthState {
@@ -16,6 +16,10 @@ interface AuthState {
   canRegisterPayment: boolean
   /** Financial has no access to the installment plans at all. */
   canManageInstallmentPlans: boolean
+  /** Controle contábil: always the administrator; Accounting once the administrator allows it on screen. */
+  canUseClosing: boolean
+  /** False while Accounting's access to the Controle contábil is still being asked to the server. */
+  closingAccessKnown: boolean
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -42,6 +46,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // Whether Accounting may open the Controle contábil is a setting on the server, so it is asked once per login.
+  const [closingAllowed, setClosingAllowed] = useState<{ userId: number; allowed: boolean } | null>(null)
+  useEffect(() => {
+    if (user?.role !== 'ACCOUNTING') return
+    let active = true
+    closingApi.access().then(
+      (access) => active && setClosingAllowed({ userId: user.id, allowed: access.allowed }),
+      () => active && setClosingAllowed({ userId: user.id, allowed: false }),
+    )
+    return () => {
+      active = false
+    }
+  }, [user])
+
   const login = useCallback(async (email: string, password: string) => {
     const result = await authApi.login(email, password)
     tokenStore.set(result.token)
@@ -61,8 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canEditSlips: role === 'ADMIN' || role === 'FISCAL' || role === 'ACCOUNTING',
       canRegisterPayment: role === 'ADMIN' || role === 'FINANCIAL' || role === 'ACCOUNTING',
       canManageInstallmentPlans: role === 'ADMIN' || role === 'FISCAL' || role === 'ACCOUNTING',
+      closingAccessKnown: role !== 'ACCOUNTING' || closingAllowed?.userId === user?.id,
+      canUseClosing: role === 'ADMIN' || (role === 'ACCOUNTING' && closingAllowed !== null && closingAllowed.userId === user?.id && closingAllowed.allowed),
     }
-  }, [user, loading, login, logout])
+  }, [user, loading, login, logout, closingAllowed])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

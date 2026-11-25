@@ -1,4 +1,4 @@
-import type { BrazilianState, HistoryEventType, InstallmentOrigin, InstallmentStatus, SendStatus, SlipStatus, UserRole } from '../api/types'
+import type { BalanceStatus, BrazilianState, HistoryEventType, InstallmentOrigin, InstallmentStatus, SendStatus, SlipStatus, UserRole, HolderType } from '../api/types'
 
 const TIME_ZONE = 'America/Sao_Paulo'
 
@@ -168,4 +168,29 @@ export const HISTORY_EVENT_LABELS: Record<HistoryEventType, string> = {
   RECEIPT_REMOVED: 'Comprovante removido',
   DELETED: 'Guia excluída',
   RESTORED: 'Guia restaurada',
+}
+
+export const BALANCE_STATUS_LABELS: Record<BalanceStatus, string> = {
+  PENDING: 'Pendente',
+  DIVERGENT: 'Divergente',
+  OK: 'OK',
+  NO_MOVEMENT: 'Sem movimento',
+}
+
+/** Existing badge colours: OK green, divergent red, pending amber, no movement grey. */
+export const BALANCE_STATUS_BADGES: Record<BalanceStatus, string> = {
+  PENDING: 'badge-pending',
+  DIVERGENT: 'badge-overdue',
+  OK: 'badge-paid',
+  NO_MOVEMENT: 'badge-archived',
+}
+
+export const HOLDER_TYPE_LABELS: Record<HolderType, string> = {
+  CHECKING: 'Conta corrente',
+  INVESTMENT: 'Aplicação',
+}
+
+/** `12345678` → `12.345.678` (the root of a CNPJ). */
+export function formatCnpjRoot(root: string): string {
+  return `${root.slice(0, 2)}.${root.slice(2, 5)}.${root.slice(5, 8)}`
 }

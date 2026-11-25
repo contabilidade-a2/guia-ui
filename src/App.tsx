@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { Loading, WakingNotice } from './components/ui'
 import { CalendarPage } from './pages/CalendarPage'
+import { ClosingPage } from './pages/ClosingPage'
 import { CompaniesPage } from './pages/CompaniesPage'
 import { DeletedSlipsPage } from './pages/DeletedSlipsPage'
 import { InstallmentPlansPage } from './pages/InstallmentPlansPage'
@@ -45,6 +46,12 @@ function RequireSlipEditor() {
   return canEditSlips ? <Outlet /> : <Navigate to="/slips" replace />
 }
 
+function RequireClosing() {
+  const { canUseClosing, closingAccessKnown } = useAuth()
+  if (!closingAccessKnown) return <Loading />
+  return canUseClosing ? <Outlet /> : <Navigate to="/" replace />
+}
+
 function RequireInstallmentPlanManager() {
   const { canManageInstallmentPlans } = useAuth()
   return canManageInstallmentPlans ? <Outlet /> : <Navigate to="/" replace />
@@ -64,6 +71,9 @@ export default function App() {
               <Route path="/slips" element={<SlipListPage />} />
               <Route element={<RequireInstallmentPlanManager />}>
                 <Route path="/installment-plans" element={<InstallmentPlansPage />} />
+              </Route>
+              <Route element={<RequireClosing />}>
+                <Route path="/closing" element={<ClosingPage />} />
               </Route>
               <Route element={<RequireSlipEditor />}>
                 <Route path="/slips/new" element={<SlipFormPage />} />

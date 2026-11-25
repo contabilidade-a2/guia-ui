@@ -295,3 +295,82 @@ export type SlipSortField = 'SLIP_TYPE' | 'SENT_AT' | 'DUE_DATE' | 'AMOUNT'
 
 /** Origin, UF and status are not sortable, for the same reason. */
 export type InstallmentPlanSortField = 'NUMBER' | 'COMPANY' | 'CIGAM_NUMBER' | 'INSTALLMENT_COUNT'
+
+// ---------- Controle contábil (etapa 1: saldos dos portadores) ----------
+
+export type HolderType = 'CHECKING' | 'INVESTMENT'
+export type BalanceStatus = 'PENDING' | 'DIVERGENT' | 'OK' | 'NO_MOVEMENT'
+
+export interface ClosingAccess {
+  allowed: boolean
+  accountingAccess: boolean
+  /** `yyyy-MM`: the first month the control covers. */
+  firstCompetence: string
+}
+
+/** A CNPJ root of the register, and the closing company made from it, if any. */
+export interface ClosingCompanyOption {
+  cnpjRoot: string
+  headOfficeName: string
+  unitCount: number
+  id: number | null
+  name: string | null
+  active: boolean
+}
+
+export interface ClosingCompany {
+  id: number
+  name: string
+}
+
+export interface BankHolder {
+  id: number
+  code: string
+  description: string
+  bank: string | null
+  account: string | null
+  type: HolderType
+  active: boolean
+  companyIds: number[]
+}
+
+export interface BankHolderInput {
+  code: string
+  description: string
+  bank: string | null
+  account: string | null
+  type: HolderType
+  active: boolean
+  companyIds: number[]
+}
+
+export interface HolderBalance {
+  holder: BankHolder
+  imported: boolean
+  noMovement: boolean
+  statementBalance: number | null
+  ledgerBalance: number | null
+  difference: number | null
+  status: BalanceStatus
+  note: string | null
+  updatedBy: string | null
+  updatedAt: string | null
+}
+
+export interface HolderBalanceInput {
+  holderId: number
+  companyId: number
+  competence: string
+  imported: boolean
+  noMovement: boolean
+  statementBalance: number | null
+  ledgerBalance: number | null
+  note: string | null
+}
+
+export interface ImportReport {
+  linesRead: number
+  balancesSaved: number
+  holdersCreated: string[]
+  ignored: { line: number; message: string }[]
+}

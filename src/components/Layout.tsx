@@ -29,8 +29,15 @@ interface MenuGroup {
  * The menu (layout chosen by the user on 25/11/2026): the calendar alone, then the screens grouped. Each profile sees
  * only its screens; a group left empty is hidden, and a group with a single screen becomes a plain link.
  */
-function menuGroups(access: { isAdmin: boolean; canManageCompanies: boolean; canManageInstallmentPlans: boolean }): MenuGroup[] {
-  const { isAdmin, canManageCompanies, canManageInstallmentPlans } = access
+interface MenuAccess {
+  isAdmin: boolean
+  canManageCompanies: boolean
+  canManageInstallmentPlans: boolean
+  canUseClosing: boolean
+}
+
+function menuGroups(access: MenuAccess): MenuGroup[] {
+  const { isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing } = access
   const groups: MenuGroup[] = [
     {
       label: 'Guias',
@@ -43,8 +50,14 @@ function menuGroups(access: { isAdmin: boolean; canManageCompanies: boolean; can
         ...(isAdmin ? [{ label: 'Tipos de guia', to: '/slip-types' }, { label: 'Usuários', to: '/users' }] : []),
       ],
     },
-    // Screens planned for the accounting area; only the administrator sees them for now.
-    { label: 'Contábil', items: isAdmin ? [{ label: 'Importação contábil' }, { label: 'Controle contábil' }] : [] },
+    // Importação contábil is still to come (administrator only); Controle contábil is for whoever may use it.
+    {
+      label: 'Contábil',
+      items: [
+        ...(isAdmin ? [{ label: 'Importação contábil' }] : []),
+        ...(canUseClosing ? [{ label: 'Controle contábil', to: '/closing' }] : []),
+      ],
+    },
     {
       label: 'Administração',
       items: isAdmin ? [{ label: 'Guias excluídas', to: '/deleted-slips' }, { label: 'Uso', to: '/usage' }] : [],
@@ -129,7 +142,7 @@ function NavGroup({ group }: { group: MenuGroup }) {
 }
 
 export function Layout() {
-  const { user, isAdmin, canManageCompanies, canManageInstallmentPlans, logout } = useAuth()
+  const { user, isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing, logout } = useAuth()
   const location = useLocation()
   if (!user) return null
 
@@ -142,7 +155,7 @@ export function Layout() {
             Sistema Contábil
           </Link>
           {/* keyed by the route, like the user menu: a group's menu closes on any navigation */}
-          <MainNav key={`nav:${location.pathname}`} groups={menuGroups({ isAdmin, canManageCompanies, canManageInstallmentPlans })} />
+          <MainNav key={`nav:${location.pathname}`} groups={menuGroups({ isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing })} />
           {/* keyed by the route so the menu closes on any navigation, the back button included */}
           <UserMenu key={location.pathname} name={user.name} role={ROLE_LABELS[user.role]} onLogout={logout} />
         </div>
