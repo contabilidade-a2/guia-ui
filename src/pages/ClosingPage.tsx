@@ -10,13 +10,14 @@ import type {
   HolderBalance,
   HolderType,
   ImportReport,
+  SortState,
 } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { CheckboxList } from '../components/CheckboxList'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { MonthInput } from '../components/MonthInput'
 import { SignedMoneyInput } from '../components/SignedMoneyInput'
-import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
+import { ErrorBanner, Field, Loading, Modal, Segmented, SortableHeader } from '../components/ui'
 import {
   BALANCE_STATUS_BADGES,
   BALANCE_STATUS_LABELS,
@@ -235,6 +236,129 @@ function FilterRow({ chips, showChips, onOpen, onClear }: FilterRowProps) {
   )
 }
 
+// ---------- ordering by a clicked column (as in the other lists; asked by the user on 25/11/2026) ----------
+// Every list here comes whole from the API, so it is ordered in the browser. No column = the API's order.
+
+const byText = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base', numeric: true })
+
+/** Holder codes by letters, then number: C1, C01, C2… A1 (as the API orders them). */
+function byHolderCode(a: string, b: string): number {
+  const letters = (code: string) => code.replace(/\d+$/, '')
+  const number = (code: string) => Number(code.replace(/^\D+/, '')) || 0
+  return byText(letters(a), letters(b)) || number(a) - number(b) || a.localeCompare(b)
+}
+
+/** A value that may be missing: missing ones always go last, whichever the direction. */
+function compareOptional<T>(a: T | null, b: T | null, compare: (a: T, b: T) => number, ascending: boolean): number {
+  if (a === null || b === null || a === '' || b === '') {
+    const aMissing = a === null || a === ''
+    const bMissing = b === null || b === ''
+    return aMissing === bMissing ? 0 : aMissing ? 1 : -1
+  }
+  return ascending ? compare(a, b) : compare(b, a)
+}
+
+function sortRows<T, F extends string>(
+  rows: T[],
+  sort: SortState<F> | null,
+  compare: (a: T, b: T, field: F, ascending: boolean) => number,
+): T[] {
+  if (!sort) return rows
+  return [...rows].sort((a, b) => compare(a, b, sort.field, sort.ascending))
+}
+
+type BalanceSortField =
+  | 'HOLDER'
+  | 'BANK'
+  | 'ACCOUNT'
+  | 'IMPORTED'
+  | 'NO_MOVEMENT'
+  | 'STATEMENT'
+  | 'LEDGER'
+  | 'DIFFERENCE'
+  | 'STATUS'
+
+/** Status ascending reads as the summary: divergent, pending, OK, no movement. Ties keep the holder order. */
+function compareBalances(a: HolderBalance, b: HolderBalance, field: BalanceSortField, ascending: boolean): number {
+  const sign = ascending ? 1 : -1
+  const byNumber = (x: number, y: number) => x - y
+  const result = (() => {
+    switch (field) {
+      case 'HOLDER':
+        return sign * byHolderCode(a.holder.code, b.holder.code)
+      case 'BANK':
+        return compareOptional(a.holder.bank, b.holder.bank, byText, ascending)
+      case 'ACCOUNT':
+        return compareOptional(a.holder.account, b.holder.account, byText, ascending)
+      case 'IMPORTED':
+        return sign * (Number(b.imported) - Number(a.imported))
+      case 'NO_MOVEMENT':
+        return sign * (Number(b.noMovement) - Number(a.noMovement))
+      case 'STATEMENT':
+        return compareOptional(a.statementBalance, b.statementBalance, byNumber, ascending)
+      case 'LEDGER':
+        return compareOptional(a.ledgerBalance, b.ledgerBalance, byNumber, ascending)
+      case 'DIFFERENCE':
+        return compareOptional(a.difference, b.difference, byNumber, ascending)
+      case 'STATUS':
+        return sign * (STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status))
+    }
+  })()
+  return result || byHolderCode(a.holder.code, b.holder.code)
+}
+
+type HolderSortField = 'CODE' | 'DESCRIPTION' | 'BANK' | 'ACCOUNT' | 'TYPE' | 'STATUS'
+
+/** Type ascending: checking accounts, then investments; status ascending: active first. */
+function compareHolders(a: BankHolder, b: BankHolder, field: HolderSortField, ascending: boolean): number {
+  const sign = ascending ? 1 : -1
+  const result = (() => {
+    switch (field) {
+      case 'CODE':
+        return sign * byHolderCode(a.code, b.code)
+      case 'DESCRIPTION':
+        return sign * byText(a.description, b.description)
+      case 'BANK':
+        return compareOptional(a.bank, b.bank, byText, ascending)
+      case 'ACCOUNT':
+        return compareOptional(a.account, b.account, byText, ascending)
+      case 'TYPE':
+        return sign * (Number(a.type === 'INVESTMENT') - Number(b.type === 'INVESTMENT'))
+      case 'STATUS':
+        return sign * (Number(!a.active) - Number(!b.active))
+    }
+  })()
+  return result || byHolderCode(a.code, b.code)
+}
+
+type ClosingCompanySortField = 'ROOT' | 'HEAD_OFFICE' | 'UNITS' | 'NAME' | 'STATUS'
+
+/** Name: roots outside the control (no name) go last; status ascending: active, inactive, outside the control. */
+function compareClosingCompanies(
+  a: ClosingCompanyOption,
+  b: ClosingCompanyOption,
+  field: ClosingCompanySortField,
+  ascending: boolean,
+): number {
+  const sign = ascending ? 1 : -1
+  const statusRank = (option: ClosingCompanyOption) => (option.id === null ? 2 : option.active ? 0 : 1)
+  const result = (() => {
+    switch (field) {
+      case 'ROOT':
+        return sign * a.cnpjRoot.localeCompare(b.cnpjRoot)
+      case 'HEAD_OFFICE':
+        return sign * byText(a.headOfficeName, b.headOfficeName)
+      case 'UNITS':
+        return sign * (a.unitCount - b.unitCount)
+      case 'NAME':
+        return compareOptional(a.name, b.name, byText, ascending)
+      case 'STATUS':
+        return sign * (statusRank(a) - statusRank(b))
+    }
+  })()
+  return result || byText(a.headOfficeName, b.headOfficeName)
+}
+
 /** "Pendentes e divergentes" is the panel's default: what still needs attention. */
 type StatusFilter = 'OPEN' | 'ALL' | BalanceStatus
 
@@ -320,6 +444,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('OPEN')
   const [holderFilter, setHolderFilter] = useState<HolderFilter>(EMPTY_HOLDER_FILTER)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [sort, setSort] = useState<SortState<BalanceSortField> | null>(null)
   const [rows, setRows] = useState<HolderBalance[]>([])
   /** Rows edited on screen stay visible under "Pendentes e divergentes", so a row doesn't vanish while being checked. */
   const [touched, setTouched] = useState<Set<number>>(new Set())
@@ -463,7 +588,13 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
             key={group.type}
             title={group.title}
             all={all}
-            shown={visible.filter((row) => row.holder.type === group.type)}
+            shown={sortRows(
+              visible.filter((row) => row.holder.type === group.type),
+              sort,
+              compareBalances,
+            )}
+            sort={sort}
+            onSort={setSort}
             emptyText={filtering ? 'Nenhum portador deste grupo com estes filtros.' : 'Nada pendente ou divergente neste grupo.'}
             onSave={save}
           />
@@ -479,9 +610,12 @@ interface BalanceGroupProps {
   shown: HolderBalance[]
   emptyText: string
   onSave: (row: HolderBalance, change: Partial<HolderBalance>) => void
+  /** Shared by both groups: one click orders checking accounts and investments the same way. */
+  sort: SortState<BalanceSortField> | null
+  onSort: (sort: SortState<BalanceSortField> | null) => void
 }
 
-function BalanceGroup({ title, all, shown, emptyText, onSave }: BalanceGroupProps) {
+function BalanceGroup({ title, all, shown, emptyText, onSave, sort, onSort }: BalanceGroupProps) {
   const [open, setOpen] = useState(true)
   return (
     <section className="card closing-group">
@@ -498,15 +632,15 @@ function BalanceGroup({ title, all, shown, emptyText, onSave }: BalanceGroupProp
           <table className="closing-table">
             <thead>
               <tr>
-                <th>Portador</th>
-                <th>Banco</th>
-                <th>Conta</th>
-                <th className="center">Importado</th>
-                <th className="center">Sem mov.</th>
-                <th className="number">Saldo extrato</th>
-                <th className="number">Saldo contábil</th>
-                <th className="number">Diferença</th>
-                <th>Status</th>
+                <SortableHeader label="Portador" field="HOLDER" sort={sort} onSort={onSort} />
+                <SortableHeader label="Banco" field="BANK" sort={sort} onSort={onSort} />
+                <SortableHeader label="Conta" field="ACCOUNT" sort={sort} onSort={onSort} />
+                <SortableHeader label="Importado" field="IMPORTED" sort={sort} onSort={onSort} className="center" />
+                <SortableHeader label="Sem mov." field="NO_MOVEMENT" sort={sort} onSort={onSort} className="center" />
+                <SortableHeader label="Saldo extrato" field="STATEMENT" sort={sort} onSort={onSort} className="number" />
+                <SortableHeader label="Saldo contábil" field="LEDGER" sort={sort} onSort={onSort} className="number" />
+                <SortableHeader label="Diferença" field="DIFFERENCE" sort={sort} onSort={onSort} className="number" />
+                <SortableHeader label="Status" field="STATUS" sort={sort} onSort={onSort} />
                 <th>Observação</th>
               </tr>
             </thead>
@@ -622,8 +756,13 @@ function HoldersSection() {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const advancedChips = holderFilterChips(filter, setFilter, ['bank', 'account'])
   const filtering = filter.holder.trim() !== '' || advancedChips.length > 0 || activeFilter !== ''
-  const shown = (holders.data ?? []).filter(
-    (holder) => matchesHolder(holder, filter) && (activeFilter === '' || holder.active === (activeFilter === 'active')),
+  const [sort, setSort] = useState<SortState<HolderSortField> | null>(null)
+  const shown = sortRows(
+    (holders.data ?? []).filter(
+      (holder) => matchesHolder(holder, filter) && (activeFilter === '' || holder.active === (activeFilter === 'active')),
+    ),
+    sort,
+    compareHolders,
   )
 
   const closingCompanies = useMemo(
@@ -697,13 +836,13 @@ function HoldersSection() {
           <table>
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Descrição</th>
-                <th>Banco</th>
-                <th>Conta</th>
-                <th>Tipo</th>
+                <SortableHeader label="Código" field="CODE" sort={sort} onSort={setSort} />
+                <SortableHeader label="Descrição" field="DESCRIPTION" sort={sort} onSort={setSort} />
+                <SortableHeader label="Banco" field="BANK" sort={sort} onSort={setSort} />
+                <SortableHeader label="Conta" field="ACCOUNT" sort={sort} onSort={setSort} />
+                <SortableHeader label="Tipo" field="TYPE" sort={sort} onSort={setSort} />
                 <th>Empresas</th>
-                <th>Status</th>
+                <SortableHeader label="Status" field="STATUS" sort={sort} onSort={setSort} />
                 <th aria-label="Ações" />
               </tr>
             </thead>
@@ -865,6 +1004,7 @@ function HolderForm({ holder, companies, onClose, onSaved }: HolderFormProps) {
 
 function CompaniesSection({ accountingAccess, onAccessChanged }: { accountingAccess: boolean; onAccessChanged: () => void }) {
   const options = useLoad(() => closingApi.companyOptions(), [])
+  const [sort, setSort] = useState<SortState<ClosingCompanySortField> | null>(null)
   const [editing, setEditing] = useState<ClosingCompanyOption | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** The choice shown at once, until the reloaded setting arrives. */
@@ -906,16 +1046,16 @@ function CompaniesSection({ accountingAccess, onAccessChanged }: { accountingAcc
           <table>
             <thead>
               <tr>
-                <th>Raiz do CNPJ</th>
-                <th>Matriz no cadastro</th>
-                <th>Unidades</th>
-                <th>Nome no fechamento</th>
-                <th>Status</th>
+                <SortableHeader label="Raiz do CNPJ" field="ROOT" sort={sort} onSort={setSort} />
+                <SortableHeader label="Matriz no cadastro" field="HEAD_OFFICE" sort={sort} onSort={setSort} />
+                <SortableHeader label="Unidades" field="UNITS" sort={sort} onSort={setSort} />
+                <SortableHeader label="Nome no fechamento" field="NAME" sort={sort} onSort={setSort} />
+                <SortableHeader label="Status" field="STATUS" sort={sort} onSort={setSort} />
                 <th aria-label="Ações" />
               </tr>
             </thead>
             <tbody>
-              {options.data.map((option) => (
+              {sortRows(options.data, sort, compareClosingCompanies).map((option) => (
                 <tr key={option.cnpjRoot}>
                   <td className="nowrap">{formatCnpjRoot(option.cnpjRoot)}</td>
                   <td>{option.headOfficeName}</td>

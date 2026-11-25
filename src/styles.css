@@ -2406,3 +2406,22 @@ td.nowrap {
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+/* the balance table has ten sortable columns: a little less room per column, so it fits without scrolling */
+.closing-table th,
+.closing-table td {
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
+}
+
+.closing-table th {
+  letter-spacing: 0.03em;
+}
+
+.closing-table .money-input {
+  width: 7.25rem;
+}
+
+.closing-table .closing-note {
+  min-width: 7rem;
+}
