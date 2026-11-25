@@ -26,6 +26,7 @@ import {
   formatMoney,
   todayIso,
 } from '../lib/format'
+import { normalize, onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 
 type Tab = 'balances' | 'holders' | 'companies' | 'import'
@@ -82,6 +83,161 @@ function defaultCompetence(first: string): string {
 const STATUS_ORDER: BalanceStatus[] = ['DIVERGENT', 'PENDING', 'OK', 'NO_MOVEMENT']
 const OPEN_STATUSES = new Set<BalanceStatus>(['PENDING', 'DIVERGENT'])
 
+/** Portador, Banco and Conta filters, shared by the balance panel and the holder register (asked on 25/11/2026). */
+interface HolderFilter {
+  holder: string
+  bank: string
+  account: string
+}
+
+type HolderFilterField = keyof HolderFilter
+
+const EMPTY_HOLDER_FILTER: HolderFilter = { holder: '', bank: '', account: '' }
+
+/** Portador: part of the code or the description; Banco: the bank chosen; Conta: part of it, with or without dots. */
+function matchesHolder(holder: BankHolder, filter: HolderFilter): boolean {
+  const text = normalize(filter.holder.trim())
+  if (text && !normalize(holder.code).includes(text) && !normalize(holder.description).includes(text)) return false
+  if (filter.bank && (holder.bank ?? '') !== filter.bank) return false
+  const account = filter.account.trim()
+  if (account) {
+    const digits = onlyDigits(account)
+    const value = holder.account ?? ''
+    if (digits ? !onlyDigits(value).includes(digits) : !normalize(value).includes(normalize(account))) return false
+  }
+  return true
+}
+
+/** The banks of these holders, for the Banco filter. */
+function bankOptions(holders: BankHolder[]): string[] {
+  return [...new Set(holders.map((holder) => holder.bank).filter((bank): bank is string => !!bank))].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR'),
+  )
+}
+
+interface HolderFilterFieldsProps {
+  filter: HolderFilter
+  banks: string[]
+  onChange: (filter: HolderFilter) => void
+  /** Which of the three fields to show here (the others may be in sight elsewhere). */
+  fields?: HolderFilterField[]
+}
+
+function HolderFilterFields({ filter, banks, onChange, fields = ['holder', 'bank', 'account'] }: HolderFilterFieldsProps) {
+  return (
+    <>
+      {fields.includes('holder') && (
+        <Field label="Portador">
+          <input
+            type="search"
+            value={filter.holder}
+            onChange={(e) => onChange({ ...filter, holder: e.target.value })}
+            placeholder="Código ou nome"
+          />
+        </Field>
+      )}
+      {fields.includes('bank') && (
+        <Field label="Banco">
+          <select value={filter.bank} onChange={(e) => onChange({ ...filter, bank: e.target.value })}>
+            <option value="">Todos</option>
+            {banks.map((bank) => (
+              <option key={bank} value={bank}>
+                {bank}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      {fields.includes('account') && (
+        <Field label="Conta">
+          <input
+            type="search"
+            value={filter.account}
+            onChange={(e) => onChange({ ...filter, account: e.target.value })}
+            placeholder="Número"
+          />
+        </Field>
+      )}
+    </>
+  )
+}
+
+interface FilterChip {
+  label: string
+  clear: () => void
+}
+
+/** The holder filters in use, as removable chips ("Banco: ITAU ×"). */
+function holderFilterChips(
+  filter: HolderFilter,
+  onChange: (filter: HolderFilter) => void,
+  fields: HolderFilterField[],
+): FilterChip[] {
+  const labels: Record<HolderFilterField, string> = { holder: 'Portador', bank: 'Banco', account: 'Conta' }
+  return fields
+    .filter((field) => filter[field].trim() !== '')
+    .map((field) => ({ label: `${labels[field]}: ${filter[field].trim()}`, clear: () => onChange({ ...filter, [field]: '' }) }))
+}
+
+/**
+ * "Filtros avançados", as in the slip list (principle set by the user on 25/11/2026: only the main filters in sight,
+ * the rest behind this button, so a screen stays functional and clean). Highlighted while closed with a filter in use.
+ */
+function AdvancedToggle({ open, inUse, onToggle }: { open: boolean; inUse: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`button filters-toggle${open ? ' filters-toggle-open' : ''}${!open && inUse ? ' filters-toggle-active' : ''}`}
+      aria-expanded={open}
+      onClick={onToggle}
+    >
+      Filtros avançados
+      <span className="filters-toggle-sign" aria-hidden="true">
+        {open ? '−' : '+'}
+      </span>
+    </button>
+  )
+}
+
+interface FilterRowProps {
+  chips: FilterChip[]
+  showChips: boolean
+  onOpen: () => void
+  onClear?: () => void
+}
+
+/** Under the main filters: the advanced ones in use (while the panel is closed) and "Limpar filtros". */
+function FilterRow({ chips, showChips, onOpen, onClear }: FilterRowProps) {
+  if ((!showChips || chips.length === 0) && !onClear) return null
+  return (
+    <div className="filter-row">
+      {showChips && chips.length > 0 && (
+        <>
+          <span className="muted small">Filtros avançados:</span>
+          {chips.map((chip) => (
+            <span key={chip.label} className="filter-chip filter-chip-on">
+              <button type="button" className="filter-chip-main" onClick={onOpen}>
+                {chip.label}
+              </button>
+              <button type="button" className="filter-chip-remove" aria-label={`Remover filtro ${chip.label}`} onClick={chip.clear}>
+                ×
+              </button>
+            </span>
+          ))}
+        </>
+      )}
+      {onClear && (
+        <button type="button" className="link-button filter-row-end" onClick={onClear}>
+          Limpar filtros
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** "Pendentes e divergentes" is the panel's default: what still needs attention. */
+type StatusFilter = 'OPEN' | 'ALL' | BalanceStatus
+
 function countByStatus(rows: HolderBalance[]): Record<BalanceStatus, number> {
   const counts: Record<BalanceStatus, number> = { PENDING: 0, DIVERGENT: 0, OK: 0, NO_MOVEMENT: 0 }
   rows.forEach((row) => counts[row.status]++)
@@ -97,6 +253,52 @@ const COUNT_LABELS: Record<BalanceStatus, [string, string]> = {
 
 function countLabel(status: BalanceStatus, count: number): string {
   return `${count} ${COUNT_LABELS[status][count === 1 ? 0 : 1]}`
+}
+
+/** Cents, to add money without floating-point drift. */
+const cents = (value: number | null) => (value === null ? 0 : Math.round(value * 100))
+
+function Money({ cents: value }: { cents: number }) {
+  return <strong className={value < 0 ? 'negative' : undefined}>{formatMoney(value / 100)}</strong>
+}
+
+/**
+ * Totals of the checking accounts on screen (asked by the user on 25/11/2026: investments are not added, and the
+ * totals follow the filters): statement, ledger and the sum of the differences. A balance not filled in counts as
+ * zero; a row missing either balance has no difference.
+ */
+function BalanceTotals({ rows }: { rows: HolderBalance[] }) {
+  const statement = rows.reduce((sum, row) => sum + cents(row.statementBalance), 0)
+  const ledger = rows.reduce((sum, row) => sum + cents(row.ledgerBalance), 0)
+  const difference = rows.reduce((sum, row) => sum + cents(row.difference), 0)
+  return (
+    <dl className="closing-totals" aria-label="Totais das contas correntes mostradas">
+      <div className="closing-totals-caption">
+        <dt>Contas correntes</dt>
+        <dd>
+          {rows.length} {rows.length === 1 ? 'mostrada' : 'mostradas'}
+        </dd>
+      </div>
+      <div>
+        <dt>Saldo extrato</dt>
+        <dd>
+          <Money cents={statement} />
+        </dd>
+      </div>
+      <div>
+        <dt>Saldo contábil</dt>
+        <dd>
+          <Money cents={ledger} />
+        </dd>
+      </div>
+      <div title="Soma das diferenças dos portadores com os dois saldos preenchidos">
+        <dt>Diferença</dt>
+        <dd className={difference !== 0 ? 'closing-difference' : undefined}>
+          <Money cents={difference} />
+        </dd>
+      </div>
+    </dl>
+  )
 }
 
 function StatusCounts({ rows }: { rows: HolderBalance[] }) {
@@ -115,9 +317,11 @@ function StatusCounts({ rows }: { rows: HolderBalance[] }) {
 function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
   const [competence, setCompetence] = useState(() => defaultCompetence(firstCompetence))
   const [companyId, setCompanyId] = useState<number | null>(null)
-  const [onlyOpen, setOnlyOpen] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('OPEN')
+  const [holderFilter, setHolderFilter] = useState<HolderFilter>(EMPTY_HOLDER_FILTER)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [rows, setRows] = useState<HolderBalance[]>([])
-  /** Rows edited on screen stay visible with "só pendentes" on, so a row doesn't vanish while being checked. */
+  /** Rows edited on screen stay visible under "Pendentes e divergentes", so a row doesn't vanish while being checked. */
   const [touched, setTouched] = useState<Set<number>>(new Set())
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -166,7 +370,12 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
     }
   }
 
-  const visible = onlyOpen ? rows.filter((row) => OPEN_STATUSES.has(row.status) || touched.has(row.holder.id)) : rows
+  const statusMatches = (row: HolderBalance) =>
+    statusFilter === 'ALL' ||
+    (statusFilter === 'OPEN' ? OPEN_STATUSES.has(row.status) || touched.has(row.holder.id) : row.status === statusFilter)
+  const visible = rows.filter((row) => statusMatches(row) && matchesHolder(row.holder, holderFilter))
+  const advancedChips = holderFilterChips(holderFilter, setHolderFilter, ['holder', 'bank', 'account'])
+  const filtering = statusFilter !== 'OPEN' || advancedChips.length > 0
   const groups: { type: HolderType; title: string }[] = [
     { type: 'CHECKING', title: 'Contas correntes' },
     { type: 'INVESTMENT', title: 'Aplicações' },
@@ -187,10 +396,40 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
             ))}
           </select>
         </Field>
-        <label className="checkbox closing-only-open">
-          <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
-          Só pendentes e divergentes
-        </label>
+        <Field label="Status">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
+            <option value="OPEN">Pendentes e divergentes</option>
+            <option value="ALL">Todos</option>
+            {STATUS_ORDER.map((status) => (
+              <option key={status} value={status}>
+                {BALANCE_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <AdvancedToggle open={advancedOpen} inUse={advancedChips.length > 0} onToggle={() => setAdvancedOpen(!advancedOpen)} />
+        <FilterRow
+          chips={advancedChips}
+          showChips={!advancedOpen}
+          onOpen={() => setAdvancedOpen(true)}
+          onClear={
+            filtering
+              ? () => {
+                  setStatusFilter('OPEN')
+                  setHolderFilter(EMPTY_HOLDER_FILTER)
+                }
+              : undefined
+          }
+        />
+        {advancedOpen && (
+          <div className="filters-advanced filters-advanced-holders">
+            <HolderFilterFields
+              filter={holderFilter}
+              banks={bankOptions(rows.map((row) => row.holder))}
+              onChange={setHolderFilter}
+            />
+          </div>
+        )}
       </div>
       {competence !== '' && !validCompetence && (
         <div className="banner banner-error">
@@ -209,6 +448,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
           <div>
             <strong>{rows.length}</strong> {rows.length === 1 ? 'portador' : 'portadores'} no mês
           </div>
+          <BalanceTotals rows={visible.filter((row) => row.holder.type === 'CHECKING')} />
           <StatusCounts rows={rows} />
         </div>
       )}
@@ -224,6 +464,7 @@ function BalancePanel({ firstCompetence }: { firstCompetence: string }) {
             title={group.title}
             all={all}
             shown={visible.filter((row) => row.holder.type === group.type)}
+            emptyText={filtering ? 'Nenhum portador deste grupo com estes filtros.' : 'Nada pendente ou divergente neste grupo.'}
             onSave={save}
           />
         )
@@ -236,10 +477,11 @@ interface BalanceGroupProps {
   title: string
   all: HolderBalance[]
   shown: HolderBalance[]
+  emptyText: string
   onSave: (row: HolderBalance, change: Partial<HolderBalance>) => void
 }
 
-function BalanceGroup({ title, all, shown, onSave }: BalanceGroupProps) {
+function BalanceGroup({ title, all, shown, emptyText, onSave }: BalanceGroupProps) {
   const [open, setOpen] = useState(true)
   return (
     <section className="card closing-group">
@@ -257,6 +499,8 @@ function BalanceGroup({ title, all, shown, onSave }: BalanceGroupProps) {
             <thead>
               <tr>
                 <th>Portador</th>
+                <th>Banco</th>
+                <th>Conta</th>
                 <th className="center">Importado</th>
                 <th className="center">Sem mov.</th>
                 <th className="number">Saldo extrato</th>
@@ -272,8 +516,8 @@ function BalanceGroup({ title, all, shown, onSave }: BalanceGroupProps) {
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="muted empty-row">
-                    Nada pendente ou divergente neste grupo.
+                  <td colSpan={10} className="muted empty-row">
+                    {emptyText}
                   </td>
                 </tr>
               )}
@@ -293,22 +537,18 @@ function BalanceLine({ row, onSave }: { row: HolderBalance; onSave: (row: Holder
     setNote(row.note ?? '')
   }
   const { holder } = row
-  // A holder created by the import is described by its bank and account; then they aren't repeated below.
-  const details = [holder.bank, holder.account].filter(Boolean).join(' · ')
-  const repeated = holder.description === [holder.bank, holder.account].filter(Boolean).join(' ')
+  // Bank and account have their own columns; the description only shows when it says something else.
+  const repeated = normalize(holder.description) === normalize([holder.bank, holder.account].filter(Boolean).join(' '))
   const disabled = row.noMovement
 
   return (
     <tr className={`closing-row closing-row-${row.status.toLowerCase()}`}>
       <td>
-        <div className="closing-holder">
-          <span className="closing-code">{holder.code}</span>
-          <span>
-            {holder.description}
-            {details && !repeated && <span className="muted closing-holder-details">{details}</span>}
-          </span>
-        </div>
+        <span className="closing-code">{holder.code}</span>
+        {!repeated && <span className="muted closing-holder-details">{holder.description}</span>}
       </td>
+      <td className="nowrap">{holder.bank ?? <span className="muted">—</span>}</td>
+      <td className="nowrap">{holder.account ?? <span className="muted">—</span>}</td>
       <td className="center">
         <input
           type="checkbox"
@@ -376,6 +616,15 @@ function HoldersSection() {
   const companies = useLoad(() => closingApi.companyOptions(), [])
   const [editing, setEditing] = useState<BankHolder | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Portador and Status in sight; Banco and Conta under "Filtros avançados".
+  const [filter, setFilter] = useState<HolderFilter>(EMPTY_HOLDER_FILTER)
+  const [activeFilter, setActiveFilter] = useState<'' | 'active' | 'inactive'>('')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const advancedChips = holderFilterChips(filter, setFilter, ['bank', 'account'])
+  const filtering = filter.holder.trim() !== '' || advancedChips.length > 0 || activeFilter !== ''
+  const shown = (holders.data ?? []).filter(
+    (holder) => matchesHolder(holder, filter) && (activeFilter === '' || holder.active === (activeFilter === 'active')),
+  )
 
   const closingCompanies = useMemo(
     () => (companies.data ?? []).filter((option) => option.id !== null) as (ClosingCompanyOption & { id: number })[],
@@ -408,6 +657,42 @@ function HoldersSection() {
       <ErrorBanner message={error ?? holders.error ?? companies.error} onRetry={holders.error ? holders.reload : undefined} />
       {holders.loading && !holders.data && <Loading />}
       {holders.data && (
+        <div className="card filters filters-holders">
+          <HolderFilterFields filter={filter} banks={bankOptions(holders.data)} onChange={setFilter} fields={['holder']} />
+          <Field label="Status" group>
+            <Segmented
+              label="Status"
+              options={[
+                { value: '', label: 'Todos' },
+                { value: 'active', label: 'Ativo' },
+                { value: 'inactive', label: 'Inativo' },
+              ]}
+              value={activeFilter}
+              onChange={setActiveFilter}
+            />
+          </Field>
+          <AdvancedToggle open={advancedOpen} inUse={advancedChips.length > 0} onToggle={() => setAdvancedOpen(!advancedOpen)} />
+          <FilterRow
+            chips={advancedChips}
+            showChips={!advancedOpen}
+            onOpen={() => setAdvancedOpen(true)}
+            onClear={
+              filtering
+                ? () => {
+                    setFilter(EMPTY_HOLDER_FILTER)
+                    setActiveFilter('')
+                  }
+                : undefined
+            }
+          />
+          {advancedOpen && (
+            <div className="filters-advanced filters-advanced-holders">
+              <HolderFilterFields filter={filter} banks={bankOptions(holders.data)} onChange={setFilter} fields={['bank', 'account']} />
+            </div>
+          )}
+        </div>
+      )}
+      {holders.data && (
         <div className="card table-wrapper">
           <table>
             <thead>
@@ -423,7 +708,7 @@ function HoldersSection() {
               </tr>
             </thead>
             <tbody>
-              {holders.data.map((holder) => (
+              {shown.map((holder) => (
                 <tr key={holder.id}>
                   <td className="closing-code">{holder.code}</td>
                   <td>{holder.description}</td>
@@ -446,10 +731,12 @@ function HoldersSection() {
                   </td>
                 </tr>
               ))}
-              {holders.data.length === 0 && (
+              {shown.length === 0 && (
                 <tr>
                   <td colSpan={8} className="muted empty-row">
-                    Nenhum portador cadastrado. Cadastre aqui ou importe um CSV.
+                    {filtering
+                      ? 'Nenhum portador encontrado com estes filtros.'
+                      : 'Nenhum portador cadastrado. Cadastre aqui ou importe um CSV.'}
                   </td>
                 </tr>
               )}

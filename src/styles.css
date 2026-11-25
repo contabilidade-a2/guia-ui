@@ -2192,13 +2192,22 @@ td.nowrap {
 /* ---------- Controle contábil ---------- */
 
 .filters-closing {
-  grid-template-columns: 9rem minmax(14rem, 22rem) auto;
+  grid-template-columns: 8rem minmax(0, 1.4fr) minmax(0, 1fr) auto;
   align-items: end;
 }
 
-.closing-only-open {
-  padding-bottom: 0.6rem;
-  font-weight: 500;
+.filters-holders {
+  grid-template-columns: minmax(0, 1.4fr) auto auto;
+}
+
+/* Controle contábil: Portador, Banco and Conta (or just Banco and Conta) under "Filtros avançados" */
+.filters-advanced-holders {
+  grid-template-columns: repeat(3, minmax(0, 14rem));
+}
+
+.filters-holders .segmented button {
+  padding: 0 0.7rem;
+  font-size: 0.88rem;
 }
 
 .closing-summary {
@@ -2273,13 +2282,6 @@ td.nowrap {
   text-align: right;
 }
 
-.closing-holder {
-  min-width: 15rem;
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-}
-
 .closing-holder-details {
   display: block;
   font-size: 0.8rem;
@@ -2289,10 +2291,6 @@ td.nowrap {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-.closing-holder .closing-code {
-  min-width: 2.6rem;
 }
 
 .closing-row-divergent {
@@ -2305,7 +2303,7 @@ td.nowrap {
 }
 
 .money-input {
-  width: 9rem;
+  width: 8rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -2320,7 +2318,7 @@ td.nowrap {
 
 .closing-note {
   width: 100%;
-  min-width: 10rem;
+  min-width: 8rem;
 }
 
 .closing-section-header {
@@ -2366,7 +2364,45 @@ td.nowrap {
 }
 
 @media (max-width: 720px) {
+  .filters-holders,
+  .filters-advanced-holders,
   .filters-closing {
     grid-template-columns: 1fr;
   }
+}
+
+/* the month's totals in the summary: statement, ledger and difference */
+.closing-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.75rem;
+  margin: 0;
+}
+
+.closing-totals div {
+  display: flex;
+  flex-direction: column;
+}
+
+.closing-totals dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--subtle);
+}
+
+.closing-totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.closing-totals .negative {
+  color: var(--danger-strong);
+}
+
+.closing-totals-caption dd {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
