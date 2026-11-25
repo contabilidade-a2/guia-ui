@@ -2120,3 +2120,71 @@ td.nowrap {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* "Uso": the free plans' limits, above the month's usage */
+.limits {
+  margin-bottom: 1.5rem;
+}
+
+.limits-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.limits-header .link-button {
+  margin-left: auto;
+}
+
+.limits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.75rem;
+}
+
+.limit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.limit-card strong {
+  font-size: 1.5rem;
+}
+
+.meter {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.meter-mid span {
+  background: var(--pending-strong);
+}
+
+.meter-high span {
+  background: var(--danger-strong);
+}
+
+.limit-tables {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+.limit-tables li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.15rem 0;
+}

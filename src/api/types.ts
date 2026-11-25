@@ -257,6 +257,13 @@ export interface SlipTypeGroup {
 }
 
 /** Usage metrics of one month, kept to decide about the hosting. Durations in milliseconds; null without data. */
+/** How close the system is to the free plans' limits (`GET /api/usage/limits`). */
+export interface PlanLimits {
+  email: { remainingToday: number | null; dailyLimit: number; unavailableReason: string | null }
+  database: { sizeBytes: number | null; limitBytes: number; largestTables: { name: string; bytes: number }[]; unavailableReason: string | null }
+  checkedAt: string
+}
+
 export interface UsageSummary {
   /** `yyyy-MM` */
   month: string

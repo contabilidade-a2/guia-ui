@@ -23,7 +23,7 @@ import type {
   SlipType,
   SlipTypeInput,
   SlipTypeGroup,
-  UsageSummary,
+  PlanLimits, UsageSummary,
   User,
   UserInput,
 } from './types'
@@ -145,4 +145,6 @@ export const calendarApi = {
 export const usageApi = {
   /** `month` as `yyyy-MM`; the current month when empty. */
   summary: (month: string) => request<UsageSummary>('GET', `/api/usage/summary${month ? `?month=${month}` : ''}`),
+  /** E-mails left today (read from Brevo) and the database size, against the free plans' limits. */
+  limits: () => request<PlanLimits>('GET', '/api/usage/limits'),
 }
