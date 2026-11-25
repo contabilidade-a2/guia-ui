@@ -2005,3 +2005,8 @@ button.filter-chip-main,
   gap: 1rem;
   align-items: start;
 }
+
+/* table cells that must not break, like a formatted CNPJ */
+td.nowrap {
+  white-space: nowrap;
+}

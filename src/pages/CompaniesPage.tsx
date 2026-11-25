@@ -4,6 +4,7 @@ import { errorMessage, fieldErrors } from '../api/client'
 import { companiesApi, usersApi } from '../api/endpoints'
 import type { Company, User } from '../api/types'
 import { CheckboxList } from '../components/CheckboxList'
+import { onlyDigits } from '../lib/text'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
 import { useLoad } from '../lib/useLoad'
@@ -50,6 +51,8 @@ export function CompaniesPage() {
                 <th>Nome</th>
                 <th>Nome fantasia</th>
                 <th>CNPJ</th>
+                <th>Cód. Cigam</th>
+                <th>Cód. Domínio</th>
                 <th>Status</th>
                 <th>Usuários notificados</th>
                 <th aria-label="Ações" />
@@ -60,7 +63,9 @@ export function CompaniesPage() {
                 <tr key={company.id}>
                   <td>{company.name}</td>
                   <td>{company.tradeName}</td>
-                  <td>{company.formattedCnpj}</td>
+                  <td className="nowrap">{company.formattedCnpj}</td>
+                  <td>{company.cigamCode ?? <span className="muted">—</span>}</td>
+                  <td>{company.dominioCode ?? <span className="muted">—</span>}</td>
                   <td>
                     <span className={`badge ${company.active ? 'badge-paid' : 'badge-archived'}`}>
                       {company.active ? 'Ativo' : 'Inativo'}
@@ -79,7 +84,7 @@ export function CompaniesPage() {
               ))}
               {companies.data.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="muted empty-row">
+                  <td colSpan={8} className="muted empty-row">
                     Nenhuma empresa cadastrada ainda.
                   </td>
                 </tr>
@@ -114,6 +119,8 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
   const [tradeName, setTradeName] = useState(company?.tradeName ?? '')
   const [cnpj, setCnpj] = useState(company?.formattedCnpj ?? '')
   const [active, setActive] = useState(company?.active ?? true)
+  const [cigamCode, setCigamCode] = useState(company?.cigamCode ?? '')
+  const [dominioCode, setDominioCode] = useState(company?.dominioCode ?? '')
   const [notifiedUserIds, setNotifiedUserIds] = useState((company?.notifiedUserIds ?? []).map(String))
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -131,6 +138,8 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
         tradeName: tradeName.trim() || null,
         active,
         notifiedUserIds: notifiedUserIds.map(Number),
+        cigamCode: cigamCode || null,
+        dominioCode: dominioCode || null,
       }
       if (company) await companiesApi.update(company.id, input)
       else await companiesApi.create(input)
@@ -155,6 +164,15 @@ function CompanyForm({ company, onClose, onSaved }: CompanyFormProps) {
         <Field label="CNPJ" error={errors.cnpj} hint="Com ou sem pontuação; aceita o formato alfanumérico.">
           <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" required />
         </Field>
+        {/* The group's company mapping: optional, digits only, leading zeros kept (asked on 25/11/2026). */}
+        <div className="form-row">
+          <Field label="Cód. Cigam" error={errors.cigamCode} hint="Opcional. Só dígitos.">
+            <input inputMode="numeric" maxLength={10} value={cigamCode} onChange={(e) => setCigamCode(onlyDigits(e.target.value))} />
+          </Field>
+          <Field label="Cód. Domínio" error={errors.dominioCode} hint="Opcional. Só dígitos.">
+            <input inputMode="numeric" maxLength={10} value={dominioCode} onChange={(e) => setDominioCode(onlyDigits(e.target.value))} />
+          </Field>
+        </div>
         <Field
           label="Status"
           group

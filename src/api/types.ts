@@ -44,6 +44,9 @@ export interface Company {
   updatedAt: string
   /** Ids of the users notified about this company's slips. */
   notifiedUserIds: number[]
+  /** Codes of the group's company mapping: digits as text (leading zeros kept), or null. */
+  cigamCode: string | null
+  dominioCode: string | null
 }
 
 export interface CompanyInput {
@@ -52,6 +55,8 @@ export interface CompanyInput {
   tradeName: string | null
   active: boolean
   notifiedUserIds: number[]
+  cigamCode: string | null
+  dominioCode: string | null
 }
 
 export interface CompanyRef {
