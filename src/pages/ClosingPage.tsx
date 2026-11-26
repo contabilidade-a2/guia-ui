@@ -39,13 +39,42 @@ import {
 import { normalize, onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 
-type Tab = 'month' | 'holders' | 'companies' | 'catalog' | 'import'
+type Tab = 'month' | 'balances' | 'holders' | 'companies' | 'catalog' | 'import'
 
 /** Controle contábil, etapa 1: the monthly balance panel of the bank holders, and (administrator) its settings. */
 export function ClosingPage() {
   const { isAdmin } = useAuth()
   const [tab, setTab] = useState<Tab>('month')
   const access = useLoad(() => closingApi.access(), [])
+  const companies = useLoad(() => closingApi.activeCompanies(), [])
+  // The month and company are shared by Fechamento and Saldos: opening the balances keeps the same period.
+  const [competence, setCompetence] = useState('')
+  const [companyId, setCompanyId] = useState<number | null>(null)
+  const firstCompetence = access.data?.firstCompetence ?? ''
+  const period: Period | null =
+    access.data && companies.data
+      ? {
+          competence: competence || defaultCompetence(firstCompetence),
+          companyId: companyId ?? companies.data[0]?.id ?? null,
+          companies: companies.data,
+          firstCompetence,
+          setCompetence,
+          setCompanyId,
+        }
+      : null
+
+  const tabs: { value: Tab; label: string }[] = [
+    { value: 'month', label: 'Fechamento' },
+    { value: 'balances', label: 'Saldos' },
+    ...(isAdmin
+      ? ([
+          { value: 'holders', label: 'Portadores' },
+          { value: 'companies', label: 'Empresas e acesso' },
+          { value: 'catalog', label: 'Tarefas' },
+          { value: 'import', label: 'Importar CSV' },
+        ] as { value: Tab; label: string }[])
+      : []),
+  ]
 
   return (
     <>
@@ -53,25 +82,12 @@ export function ClosingPage() {
         <div>
           <h1>Controle contábil</h1>
         </div>
-        {isAdmin && (
-          <Segmented
-            label="Seção"
-            strong
-            options={[
-              { value: 'month', label: 'Fechamento' },
-              { value: 'holders', label: 'Portadores' },
-              { value: 'companies', label: 'Empresas e acesso' },
-              { value: 'catalog', label: 'Tarefas' },
-              { value: 'import', label: 'Importar CSV' },
-            ]}
-            value={tab}
-            onChange={setTab}
-          />
-        )}
+        <Segmented label="Seção" strong options={tabs} value={tab} onChange={setTab} />
       </div>
-      <ErrorBanner message={access.error} onRetry={access.reload} />
-      {access.loading && !access.data && <Loading />}
-      {access.data && tab === 'month' && <MonthView firstCompetence={access.data.firstCompetence} />}
+      <ErrorBanner message={access.error ?? companies.error} onRetry={access.error ? access.reload : companies.reload} />
+      {(access.loading || companies.loading) && !period && <Loading />}
+      {period && tab === 'month' && <MonthView period={period} onOpenBalances={() => setTab('balances')} />}
+      {period && tab === 'balances' && <BalancePanel period={period} />}
       {access.data && tab === 'holders' && <HoldersSection />}
       {access.data && tab === 'companies' && (
         <CompaniesSection
@@ -86,7 +102,52 @@ export function ClosingPage() {
   )
 }
 
-// ---------- the month: tasks by phase (etapa 2) ----------
+/** The month and the company chosen on screen, shared by the task list and the balances. */
+interface Period {
+  competence: string
+  companyId: number | null
+  companies: ClosingCompany[]
+  firstCompetence: string
+  setCompetence: (value: string) => void
+  setCompanyId: (value: number) => void
+}
+
+const validPeriod = (period: Period) =>
+  period.competence !== '' && period.competence >= period.firstCompetence && period.competence <= todayIso().slice(0, 7)
+
+function PeriodFields({ period }: { period: Period }) {
+  return (
+    <>
+      <Field label="Competência">
+        <MonthInput value={period.competence} onChange={period.setCompetence} label="Competência" />
+      </Field>
+      <Field label="Empresa">
+        <select value={period.companyId ?? ''} onChange={(e) => period.setCompanyId(Number(e.target.value))}>
+          {period.companies.map((company) => (
+            <option key={company.id} value={company.id}>
+              {company.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </>
+  )
+}
+
+function PeriodWarnings({ period }: { period: Period }) {
+  if (period.companies.length === 0) return <div className="banner banner-error">Nenhuma empresa do fechamento está ativa.</div>
+  if (period.competence !== '' && !validPeriod(period)) {
+    const first = period.firstCompetence
+    return (
+      <div className="banner banner-error">
+        A competência vai de {first.slice(5)}/{first.slice(0, 4)} até o mês atual.
+      </div>
+    )
+  }
+  return null
+}
+
+// ---------- the month: tasks by stage (etapa 2) ----------
 
 /** Concluded out of the tasks that apply (not applicable ones don't count). */
 function progress(tasks: ClosingTask[]) {
@@ -103,48 +164,141 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
   )
 }
 
-function MonthView({ firstCompetence }: { firstCompetence: string }) {
-  const [competence, setCompetence] = useState(() => defaultCompetence(firstCompetence))
-  const [companyId, setCompanyId] = useState<number | null>(null)
-  const companies = useLoad(() => closingApi.activeCompanies(), [])
-  const selectedCompany = companyId ?? companies.data?.[0]?.id ?? null
-  const validCompetence = competence !== '' && competence >= firstCompetence && competence <= todayIso().slice(0, 7)
+/** A task as the screen shows it: numbered 1 to n in the catalog order (codes stay internal). */
+interface NumberedTask extends ClosingTask {
+  number: number
+}
+
+interface TaskFilter {
+  stage: string
+  name: string
+  responsible: string
+}
+
+const EMPTY_TASK_FILTER: TaskFilter = { stage: '', name: '', responsible: '' }
+
+type TaskSortField = 'NUMBER' | 'NAME' | 'STATUS' | 'RESPONSIBLE'
+
+const TASK_STATUS_ORDER: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'DONE', 'NOT_APPLICABLE']
+
+/** Status ascending: pending, in progress, done, not applicable. Ties keep the task number. */
+function compareTasks(a: NumberedTask, b: NumberedTask, field: TaskSortField, ascending: boolean): number {
+  const sign = ascending ? 1 : -1
+  const result = (() => {
+    switch (field) {
+      case 'NUMBER':
+        return sign * (a.number - b.number)
+      case 'NAME':
+        return sign * byText(a.name, b.name)
+      case 'STATUS':
+        return sign * (TASK_STATUS_ORDER.indexOf(a.status) - TASK_STATUS_ORDER.indexOf(b.status))
+      case 'RESPONSIBLE':
+        return compareOptional(a.status === 'DONE' ? a.doneBy : null, b.status === 'DONE' ? b.doneBy : null, byText, ascending)
+    }
+  })()
+  return result || a.number - b.number
+}
+
+function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances: () => void }) {
+  const { competence, companyId } = period
+  const valid = validPeriod(period)
   const tasks = useLoad(
-    () => (selectedCompany && validCompetence ? closingApi.tasks(selectedCompany, competence) : Promise.resolve([])),
-    [selectedCompany, competence],
+    () => (companyId && valid ? closingApi.tasks(companyId, competence) : Promise.resolve([])),
+    [companyId, competence],
   )
+  const [statusFilter, setStatusFilter] = useState<'' | TaskStatus>('')
+  const [filter, setFilter] = useState<TaskFilter>(EMPTY_TASK_FILTER)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [sort, setSort] = useState<SortState<TaskSortField> | null>(null)
+
+  const responsibles = [
+    ...new Set((tasks.data ?? []).filter((task) => task.status === 'DONE' && task.doneBy).map((task) => task.doneBy as string)),
+  ].sort(byText)
+  const chips: FilterChip[] = [
+    ...(filter.stage ? [{ label: `Etapa: ${PHASE_TITLES[Number(filter.stage)]}`, clear: () => setFilter({ ...filter, stage: '' }) }] : []),
+    ...(filter.name.trim() ? [{ label: `Tarefa: ${filter.name.trim()}`, clear: () => setFilter({ ...filter, name: '' }) }] : []),
+    ...(filter.responsible
+      ? [{ label: `Responsável: ${filter.responsible}`, clear: () => setFilter({ ...filter, responsible: '' }) }]
+      : []),
+  ]
+  const filtering = statusFilter !== '' || chips.length > 0
 
   return (
     <>
       <div className="card filters filters-month">
-        <Field label="Competência">
-          <MonthInput value={competence} onChange={setCompetence} label="Competência" />
-        </Field>
-        <Field label="Empresa">
-          <select value={selectedCompany ?? ''} onChange={(e) => setCompanyId(Number(e.target.value))}>
-            {(companies.data ?? []).map((company: ClosingCompany) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
+        <PeriodFields period={period} />
+        <Field label="Status">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as '' | TaskStatus)}>
+            <option value="">Todos</option>
+            {TASK_STATUS_ORDER.map((status) => (
+              <option key={status} value={status}>
+                {TASK_STATUS_LABELS[status]}
               </option>
             ))}
           </select>
         </Field>
+        <AdvancedToggle open={advancedOpen} inUse={chips.length > 0} onToggle={() => setAdvancedOpen(!advancedOpen)} />
+        <FilterRow
+          chips={chips}
+          showChips={!advancedOpen}
+          onOpen={() => setAdvancedOpen(true)}
+          onClear={
+            filtering
+              ? () => {
+                  setStatusFilter('')
+                  setFilter(EMPTY_TASK_FILTER)
+                }
+              : undefined
+          }
+        />
+        {advancedOpen && (
+          <div className="filters-advanced filters-advanced-holders">
+            <Field label="Etapa">
+              <select value={filter.stage} onChange={(e) => setFilter({ ...filter, stage: e.target.value })}>
+                <option value="">Todas</option>
+                {Object.entries(PHASE_TITLES).map(([phase, title]) => (
+                  <option key={phase} value={phase}>
+                    {title}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Tarefa">
+              <input
+                type="search"
+                value={filter.name}
+                onChange={(e) => setFilter({ ...filter, name: e.target.value })}
+                placeholder="Parte do nome"
+              />
+            </Field>
+            <Field label="Responsável">
+              <select value={filter.responsible} onChange={(e) => setFilter({ ...filter, responsible: e.target.value })}>
+                <option value="">Todos</option>
+                {responsibles.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        )}
       </div>
-      {competence !== '' && !validCompetence && (
-        <div className="banner banner-error">
-          A competência vai de {firstCompetence.slice(5)}/{firstCompetence.slice(0, 4)} até o mês atual.
-        </div>
-      )}
-      {companies.data?.length === 0 && <div className="banner banner-error">Nenhuma empresa do fechamento está ativa.</div>}
-      <ErrorBanner message={tasks.error ?? companies.error} onRetry={tasks.error ? tasks.reload : undefined} />
+      <PeriodWarnings period={period} />
+      <ErrorBanner message={tasks.error} onRetry={tasks.reload} />
       {tasks.loading && !tasks.data && <Loading />}
-      {tasks.data && selectedCompany && validCompetence && tasks.data.length > 0 && (
+      {tasks.data && companyId && valid && tasks.data.length > 0 && (
         <TaskList
-          key={`${selectedCompany}:${competence}`}
+          key={`${companyId}:${competence}`}
           initial={tasks.data}
-          companyId={selectedCompany}
+          companyId={companyId}
           competence={competence}
-          reload={tasks.reload}
+          statusFilter={statusFilter}
+          filter={filter}
+          filtering={filtering}
+          sort={sort}
+          onSort={setSort}
+          onOpenBalances={onOpenBalances}
         />
       )}
     </>
@@ -155,11 +309,16 @@ interface TaskListProps {
   initial: ClosingTask[]
   companyId: number
   competence: string
-  /** Reloads the tasks (after a balance changes, the balance task may conclude by itself). */
-  reload: () => void
+  statusFilter: '' | TaskStatus
+  filter: TaskFilter
+  filtering: boolean
+  sort: SortState<TaskSortField> | null
+  onSort: (sort: SortState<TaskSortField> | null) => void
+  onOpenBalances: () => void
 }
 
-function TaskList({ initial, companyId, competence, reload }: TaskListProps) {
+function TaskList(props: TaskListProps) {
+  const { initial, companyId, competence, statusFilter, filter, filtering, sort, onSort, onOpenBalances } = props
   const [tasks, setTasks] = useState(initial)
   const [lastInitial, setLastInitial] = useState(initial)
   if (initial !== lastInitial) {
@@ -167,8 +326,17 @@ function TaskList({ initial, companyId, competence, reload }: TaskListProps) {
     setTasks(initial)
   }
   const [error, setError] = useState<string | null>(null)
-  const [history, setHistory] = useState<ClosingTask | null>(null)
+  const [history, setHistory] = useState<NumberedTask | null>(null)
+  const numbered: NumberedTask[] = tasks.map((task, index) => ({ ...task, number: index + 1 }))
   const total = progress(tasks)
+  const name = normalize(filter.name.trim())
+  const shown = numbered.filter(
+    (task) =>
+      (!statusFilter || task.status === statusFilter) &&
+      (!filter.stage || task.phase === Number(filter.stage)) &&
+      (!name || normalize(task.name).includes(name)) &&
+      (!filter.responsible || (task.status === 'DONE' && task.doneBy === filter.responsible)),
+  )
   const phases = [...new Set(tasks.map((task) => task.phase))].sort()
 
   async function change(task: ClosingTask, status: TaskStatus, note: string | null) {
@@ -192,7 +360,7 @@ function TaskList({ initial, companyId, competence, reload }: TaskListProps) {
       setTasks((current) => current.map((item) => (item.templateId === saved.templateId ? saved : item)))
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 428) return
-      setError(`${task.code}: ${errorMessage(caught)}`)
+      setError(`${task.name}: ${errorMessage(caught)}`)
     }
   }
 
@@ -200,36 +368,35 @@ function TaskList({ initial, companyId, competence, reload }: TaskListProps) {
     <>
       <div className="card closing-summary task-summary">
         <div className="task-summary-total">
+          <span className="task-summary-label">Tarefas concluídas</span>
           <strong>
             {total.done} de {total.total}
-          </strong>{' '}
-          tarefas concluídas
+          </strong>
           <ProgressBar {...total} />
-        </div>
-        <div className="task-summary-phases">
-          {phases.map((phase) => {
-            const count = progress(tasks.filter((task) => task.phase === phase))
-            return (
-              <span key={phase} className={`badge ${count.done === count.total ? 'badge-paid' : 'badge-archived'}`}>
-                Fase {phase}: {count.done} de {count.total}
-              </span>
-            )
-          })}
         </div>
       </div>
       <ErrorBanner message={error} />
-      {phases.map((phase) => (
-        <TaskPhase
-          key={phase}
-          phase={phase}
-          tasks={tasks.filter((task) => task.phase === phase)}
-          companyId={companyId}
-          competence={competence}
-          onChange={change}
-          onHistory={setHistory}
-          onBalancesSaved={reload}
-        />
-      ))}
+      {phases.map((phase) => {
+        const rows = sortRows(
+          shown.filter((task) => task.phase === phase),
+          sort,
+          compareTasks,
+        )
+        if (filtering && rows.length === 0) return null
+        return (
+          <TaskStage
+            key={phase}
+            title={PHASE_TITLES[phase] ?? `Etapa ${phase}`}
+            tasks={rows}
+            sort={sort}
+            onSort={onSort}
+            onChange={change}
+            onHistory={setHistory}
+            onOpenBalances={onOpenBalances}
+          />
+        )
+      })}
+      {filtering && shown.length === 0 && <p className="muted">Nenhuma tarefa com estes filtros.</p>}
       {history && (
         <TaskHistoryModal task={history} companyId={companyId} competence={competence} onClose={() => setHistory(null)} />
       )}
@@ -237,30 +404,25 @@ function TaskList({ initial, companyId, competence, reload }: TaskListProps) {
   )
 }
 
-interface TaskPhaseProps {
-  phase: number
-  tasks: ClosingTask[]
-  companyId: number
-  competence: string
+interface TaskStageProps {
+  title: string
+  tasks: NumberedTask[]
+  sort: SortState<TaskSortField> | null
+  onSort: (sort: SortState<TaskSortField> | null) => void
   onChange: (task: ClosingTask, status: TaskStatus, note: string | null) => void
-  onHistory: (task: ClosingTask) => void
-  onBalancesSaved: () => void
+  onHistory: (task: NumberedTask) => void
+  onOpenBalances: () => void
 }
 
-function TaskPhase({ phase, tasks, companyId, competence, onChange, onHistory, onBalancesSaved }: TaskPhaseProps) {
+function TaskStage({ title, tasks, sort, onSort, onChange, onHistory, onOpenBalances }: TaskStageProps) {
   const [open, setOpen] = useState(true)
-  const count = progress(tasks)
   return (
     <section className="card closing-group">
       <button type="button" className="closing-group-header" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="closing-group-caret" aria-hidden="true">
           {open ? '▾' : '▸'}
         </span>
-        <h2>{PHASE_TITLES[phase] ?? `Fase ${phase}`}</h2>
-        <span className="task-phase-count">
-          {count.done} de {count.total}
-          <ProgressBar {...count} />
-        </span>
+        <h2>{title}</h2>
       </button>
       {open && (
         <div className="table-wrapper">
@@ -268,24 +430,17 @@ function TaskPhase({ phase, tasks, companyId, competence, onChange, onHistory, o
             <thead>
               <tr>
                 <th className="task-check" aria-label="Concluída" />
-                <th>Tarefa</th>
-                <th>Status</th>
-                <th>Concluída por</th>
+                <SortableHeader label="Nº" field="NUMBER" sort={sort} onSort={onSort} />
+                <SortableHeader label="Tarefa" field="NAME" sort={sort} onSort={onSort} />
+                <SortableHeader label="Status" field="STATUS" sort={sort} onSort={onSort} />
+                <SortableHeader label="Responsável" field="RESPONSIBLE" sort={sort} onSort={onSort} />
                 <th>Observação</th>
                 <th aria-label="Ações" />
               </tr>
             </thead>
             <tbody>
               {tasks.map((task) => (
-                <TaskLine
-                  key={task.templateId}
-                  task={task}
-                  companyId={companyId}
-                  competence={competence}
-                  onChange={onChange}
-                  onHistory={onHistory}
-                  onBalancesSaved={onBalancesSaved}
-                />
+                <TaskLine key={task.templateId} task={task} onChange={onChange} onHistory={onHistory} onOpenBalances={onOpenBalances} />
               ))}
             </tbody>
           </table>
@@ -296,22 +451,20 @@ function TaskPhase({ phase, tasks, companyId, competence, onChange, onHistory, o
 }
 
 interface TaskLineProps {
-  task: ClosingTask
-  companyId: number
-  competence: string
+  task: NumberedTask
   onChange: (task: ClosingTask, status: TaskStatus, note: string | null) => void
-  onHistory: (task: ClosingTask) => void
-  onBalancesSaved: () => void
+  onHistory: (task: NumberedTask) => void
+  onOpenBalances: () => void
 }
 
-function TaskLine({ task, companyId, competence, onChange, onHistory, onBalancesSaved }: TaskLineProps) {
+function TaskLine({ task, onChange, onHistory, onOpenBalances }: TaskLineProps) {
   const [note, setNote] = useState(task.note ?? '')
   const [lastNote, setLastNote] = useState(task.note)
   if (task.note !== lastNote) {
     setLastNote(task.note)
     setNote(task.note ?? '')
   }
-  const [balancesOpen, setBalancesOpen] = useState(false)
+  const [whenOpen, setWhenOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLSpanElement>(null)
   // The status menu closes on a click outside it or on Esc, like the other menus.
@@ -330,115 +483,118 @@ function TaskLine({ task, companyId, competence, onChange, onHistory, onBalances
   }, [menuOpen])
   const locked = !task.applicable || task.automatic
   const done = task.status === 'DONE'
-  const others = (['PENDING', 'IN_PROGRESS', 'DONE', 'NOT_APPLICABLE'] as TaskStatus[]).filter((status) => status !== task.status)
+  const others = TASK_STATUS_ORDER.filter((status) => status !== task.status)
   const balances = task.balances
 
   return (
-    <>
-      <tr className={`task-row${!task.applicable ? ' task-row-na' : ''}`}>
-        <td className="task-check">
-          <input
-            type="checkbox"
-            aria-label={`${task.code}: concluída`}
-            checked={done}
-            disabled={locked}
-            title={task.automatic ? 'Concluída sozinha: todos os portadores estão OK' : undefined}
-            onChange={(e) => onChange(task, e.target.checked ? 'DONE' : 'PENDING', note)}
-          />
-        </td>
-        <td>
-          <div className="task-name" title={task.description ?? undefined}>
-            <span className="closing-code">{task.code}</span> {task.name}
-          </div>
-          {balances && task.applicable && (
-            <div className="task-balances">
-              <span className="muted">
-                {balances.total === 0
-                  ? 'Nenhum portador no mês'
-                  : `${balances.ok + balances.noMovement} de ${balances.total} OK` +
-                    (balances.divergent ? ` · ${balances.divergent} ${balances.divergent === 1 ? 'divergente' : 'divergentes'}` : '') +
-                    (balances.pending ? ` · ${balances.pending} ${balances.pending === 1 ? 'pendente' : 'pendentes'}` : '')}
-              </span>
-              <button type="button" className="link-button" aria-expanded={balancesOpen} onClick={() => setBalancesOpen(!balancesOpen)}>
-                {balancesOpen ? 'Fechar saldos ▴' : 'Ver saldos ▾'}
-              </button>
-            </div>
-          )}
-        </td>
-        <td>
-          <span className={`badge ${TASK_STATUS_BADGES[task.status]}`}>{TASK_STATUS_LABELS[task.status]}</span>
-        </td>
-        <td className="task-who">
-          {task.automatic ? (
-            <span className="muted">Automático</span>
-          ) : done && task.doneBy && task.doneAt ? (
-            <>
-              {task.doneBy}
-              <span className="muted task-when">{formatDateTime(task.doneAt)}</span>
-            </>
-          ) : (
-            <span className="muted">—</span>
-          )}
-        </td>
-        <td>
-          {task.applicable && (
-            <input
-              className="closing-note"
-              aria-label={`${task.code}: observação`}
-              maxLength={500}
-              value={note}
-              placeholder="—"
-              onChange={(e) => setNote(e.target.value)}
-              onBlur={() => note.trim() !== (task.note ?? '') && onChange(task, task.status, note)}
-              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-            />
-          )}
-        </td>
-        <td className="row-actions task-actions">
-          <button type="button" className="icon-action" title="Histórico" aria-label={`Histórico de ${task.code}`} onClick={() => onHistory(task)}>
-            <HistoryIcon />
-          </button>
-          {!locked && (
-            <span className="task-menu-wrapper" ref={menuRef}>
-              <button
-                type="button"
-                className="icon-action"
-                title="Outros status"
-                aria-label={`Outros status de ${task.code}`}
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen(!menuOpen)}
-              >
-                ⋯
-              </button>
-              {menuOpen && (
-                <span className="task-menu" role="menu">
-                  {others.map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        onChange(task, status, note)
-                      }}
-                    >
-                      {TASK_STATUS_LABELS[status]}
-                    </button>
-                  ))}
-                </span>
-              )}
+    <tr className={`task-row${!task.applicable ? ' task-row-na' : ''}`}>
+      <td className="task-check">
+        <input
+          type="checkbox"
+          aria-label={`Tarefa ${task.number}: concluída`}
+          checked={done}
+          disabled={locked}
+          title={task.automatic ? 'Concluída sozinha: todos os portadores estão OK' : undefined}
+          onChange={(e) => onChange(task, e.target.checked ? 'DONE' : 'PENDING', note)}
+        />
+      </td>
+      <td className="task-number">{task.number}</td>
+      <td>
+        <div className="task-name" title={task.description ?? undefined}>
+          {task.name}
+        </div>
+        {balances && task.applicable && (
+          <div className="task-balances">
+            <span className="muted">
+              {balances.total === 0
+                ? 'Nenhum portador no mês'
+                : `${balances.ok + balances.noMovement} de ${balances.total} OK` +
+                  (balances.divergent ? ` · ${balances.divergent} ${balances.divergent === 1 ? 'divergente' : 'divergentes'}` : '') +
+                  (balances.pending ? ` · ${balances.pending} ${balances.pending === 1 ? 'pendente' : 'pendentes'}` : '')}
             </span>
-          )}
-        </td>
-      </tr>
-      {balancesOpen && (
-        <tr className="task-balances-row">
-          <td colSpan={6}>
-            <BalancePanel competence={competence} companyId={companyId} onSaved={onBalancesSaved} />
-          </td>
-        </tr>
-      )}
-    </>
+            <button type="button" className="link-button" onClick={onOpenBalances}>
+              Ver saldos
+            </button>
+          </div>
+        )}
+      </td>
+      <td>
+        <span className={`badge ${TASK_STATUS_BADGES[task.status]}`}>{TASK_STATUS_LABELS[task.status]}</span>
+      </td>
+      <td className="task-who">
+        {task.automatic ? (
+          <span className="muted">Automático</span>
+        ) : done && task.doneBy && task.doneAt ? (
+          <>
+            <button
+              type="button"
+              className="task-who-button"
+              aria-expanded={whenOpen}
+              title={whenOpen ? 'Ocultar data e hora' : 'Mostrar data e hora'}
+              onClick={() => setWhenOpen(!whenOpen)}
+            >
+              {task.doneBy}
+              <span className="task-who-caret" aria-hidden="true">
+                {whenOpen ? '▴' : '▾'}
+              </span>
+            </button>
+            {whenOpen && <span className="muted task-when">{formatDateTime(task.doneAt)}</span>}
+          </>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
+      <td>
+        {task.applicable && (
+          <input
+            className="closing-note"
+            aria-label={`Tarefa ${task.number}: observação`}
+            maxLength={500}
+            value={note}
+            placeholder="—"
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => note.trim() !== (task.note ?? '') && onChange(task, task.status, note)}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        )}
+      </td>
+      <td className="row-actions task-actions">
+        <button type="button" className="icon-action" title="Histórico" aria-label={`Histórico da tarefa ${task.number}`} onClick={() => onHistory(task)}>
+          <HistoryIcon />
+        </button>
+        {!locked && (
+          <span className="task-menu-wrapper" ref={menuRef}>
+            <button
+              type="button"
+              className="icon-action"
+              title="Outros status"
+              aria-label={`Outros status da tarefa ${task.number}`}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <span className="task-menu" role="menu">
+                {others.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onChange(task, status, note)
+                    }}
+                  >
+                    {TASK_STATUS_LABELS[status]}
+                  </button>
+                ))}
+              </span>
+            )}
+          </span>
+        )}
+      </td>
+    </tr>
   )
 }
 
@@ -451,10 +607,17 @@ function HistoryIcon() {
   )
 }
 
-function TaskHistoryModal({ task, companyId, competence, onClose }: { task: ClosingTask; companyId: number; competence: string; onClose: () => void }) {
+interface TaskHistoryModalProps {
+  task: NumberedTask
+  companyId: number
+  competence: string
+  onClose: () => void
+}
+
+function TaskHistoryModal({ task, companyId, competence, onClose }: TaskHistoryModalProps) {
   const items = useLoad(() => closingApi.taskHistory(task.templateId, companyId, competence), [task.templateId])
   return (
-    <Modal title={`Histórico · ${task.code} ${task.name}`} onClose={onClose}>
+    <Modal title={`Histórico · ${task.number}. ${task.name}`} onClose={onClose}>
       <ErrorBanner message={items.error} />
       {items.loading && <Loading />}
       {items.data && items.data.length === 0 && <p className="muted">Nenhuma alteração neste mês.</p>}
@@ -842,15 +1005,11 @@ function StatusCounts({ rows }: { rows: HolderBalance[] }) {
   )
 }
 
-interface BalancePanelProps {
-  competence: string
-  companyId: number
-  /** After a balance is saved: the task list refreshes the balance task. */
-  onSaved: () => void
-}
-
-/** The balances of the bank holders (task F1-08), opened inside the month's task list for its company and month. */
-function BalancePanel({ competence, companyId, onSaved }: BalancePanelProps) {
+/** The balances of the bank holders (the balance task), in their own tab, for the month and company chosen on screen. */
+function BalancePanel({ period }: { period: Period }) {
+  const { competence } = period
+  const companyId = period.companyId ?? 0
+  const valid = validPeriod(period) && period.companyId !== null
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('OPEN')
   const [holderFilter, setHolderFilter] = useState<HolderFilter>(EMPTY_HOLDER_FILTER)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -860,7 +1019,10 @@ function BalancePanel({ competence, companyId, onSaved }: BalancePanelProps) {
   const [touched, setTouched] = useState<Set<number>>(new Set())
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const balances = useLoad(() => closingApi.balances(companyId, competence), [companyId, competence])
+  const balances = useLoad(
+    () => (valid ? closingApi.balances(companyId, competence) : Promise.resolve([])),
+    [companyId, competence],
+  )
 
   // A new load (another month or company) replaces the rows edited on screen.
   const [loaded, setLoaded] = useState(balances.data)
@@ -892,7 +1054,6 @@ function BalancePanel({ competence, companyId, onSaved }: BalancePanelProps) {
       })
       replace(saved)
       setTouched((current) => new Set(current).add(row.holder.id))
-      onSaved()
     } catch (caught) {
       replace(row)
       setSaveError(`${row.holder.code}: ${errorMessage(caught)}`)
@@ -912,7 +1073,8 @@ function BalancePanel({ competence, companyId, onSaved }: BalancePanelProps) {
 
   return (
     <>
-      <div className="filters filters-balances">
+      <div className="card filters filters-closing">
+        <PeriodFields period={period} />
         <Field label="Status">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
             <option value="OPEN">Pendentes e divergentes</option>
@@ -948,6 +1110,7 @@ function BalancePanel({ competence, companyId, onSaved }: BalancePanelProps) {
           </div>
         )}
       </div>
+      <PeriodWarnings period={period} />
       <ErrorBanner message={saveError ?? balances.error} onRetry={balances.error ? balances.reload : undefined} />
       {balances.loading && rows.length === 0 && <Loading />}
       {rows.length > 0 && (
@@ -959,7 +1122,7 @@ function BalancePanel({ competence, companyId, onSaved }: BalancePanelProps) {
           <StatusCounts rows={rows} />
         </div>
       )}
-      {!balances.loading && balances.data && rows.length === 0 && (
+      {!balances.loading && balances.data && rows.length === 0 && valid && (
         <p className="muted">Nenhum portador vinculado a esta empresa.</p>
       )}
       {groups.map((group) => {

@@ -2438,7 +2438,7 @@ td.nowrap {
 /* ---------- Controle contábil: tasks of the month ---------- */
 
 .filters-month {
-  grid-template-columns: 8rem minmax(0, 22rem);
+  grid-template-columns: 8rem minmax(0, 1.4fr) minmax(0, 1fr) auto;
 }
 
 .filters-balances {
@@ -2597,7 +2597,7 @@ td.nowrap {
   max-width: 22rem;
 }
 
-/* the three phases line up: fixed column widths */
+/* the three stages line up: fixed column widths (check, nº, task, status, responsible, note, actions) */
 .task-table {
   table-layout: fixed;
 }
@@ -2606,24 +2606,56 @@ td.nowrap {
   width: 2.5rem;
 }
 
-.task-table th:nth-child(3) {
-  width: 8.5rem;
+.task-table th:nth-child(2) {
+  width: 3.5rem;
 }
 
 .task-table th:nth-child(4) {
-  width: 11rem;
+  width: 9rem;
 }
 
 .task-table th:nth-child(5) {
-  width: 15rem;
+  width: 11.5rem;
 }
 
 .task-table th:nth-child(6) {
+  width: 14rem;
+}
+
+.task-table th:nth-child(7) {
   width: 5rem;
 }
 
 .task-table .closing-note {
   min-width: 0;
+}
+
+.task-number {
+  color: var(--subtle);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.task-who-button {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.task-who-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.task-who-caret {
+  color: var(--subtle);
+  font-size: 0.75rem;
+}
+
+.task-summary-label {
+  font-weight: 600;
 }
 
 /* the balance table inside the task keeps its own layout */

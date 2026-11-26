@@ -210,8 +210,9 @@ export const TASK_STATUS_BADGES: Record<TaskStatus, string> = {
   NOT_APPLICABLE: 'badge-archived',
 }
 
+/** The stages by their names only (the user asked for no "Fase 1" on 26/11/2026). */
 export const PHASE_TITLES: Record<number, string> = {
-  1: 'Fase 1 — Importações e confrontos',
-  2: 'Fase 2 — Conciliação',
-  3: 'Fase 3 — Encerramento mensal',
+  1: 'Importações e confrontos',
+  2: 'Conciliação',
+  3: 'Encerramento mensal',
 }
