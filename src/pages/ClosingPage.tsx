@@ -10,6 +10,7 @@ import type {
   HolderBalance,
   HolderType,
   ImportReport,
+  MonthProgress,
   ClosingCompany,
   ClosingTask,
   PhaseDependency,
@@ -33,6 +34,7 @@ import {
   TASK_STATUS_LABELS,
   formatCnpjRoot,
   formatDateTime,
+  formatInstantDate,
   formatMoney,
   todayIso,
 } from '../lib/format'
@@ -265,6 +267,11 @@ function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances:
   const [filter, setFilter] = useState<TaskFilter>(EMPTY_TASK_FILTER)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [sort, setSort] = useState<SortState<TaskSortField> | null>(null)
+  // The strip of recent months is reloaded with the tasks, so a task concluded here updates it.
+  const months = useLoad(
+    () => (companyId ? closingApi.recentMonths(companyId) : Promise.resolve([])),
+    [companyId, tasks.data],
+  )
 
   const responsibles = [
     ...new Set((tasks.data ?? []).filter((task) => task.status === 'DONE' && task.doneBy).map((task) => task.doneBy as string)),
@@ -306,6 +313,9 @@ function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances:
               : undefined
           }
         />
+        {months.data && months.data.length > 0 && (
+          <RecentMonths months={months.data} current={competence} onSelect={period.setCompetence} />
+        )}
         {advancedOpen && (
           <div className="filters-advanced filters-advanced-holders">
             <Field label="Etapa">
@@ -354,9 +364,53 @@ function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances:
           sort={sort}
           onSort={setSort}
           onOpenBalances={onOpenBalances}
+          onChanged={months.reload}
         />
       )}
     </>
+  )
+}
+
+const MONTH_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+/** `2026-09` → `Set/2026` */
+const shortMonth = (competence: string) => `${MONTH_SHORT[Number(competence.slice(5)) - 1]}/${competence.slice(0, 4)}`
+
+function LockIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  )
+}
+
+/**
+ * The last three months as small tags (ideas 1 + 3 chosen by the user on 26/11/2026): closed in green with a lock,
+ * in progress in amber with the count, not started in grey. A click opens that month.
+ */
+function RecentMonths({ months, current, onSelect }: { months: MonthProgress[]; current: string; onSelect: (month: string) => void }) {
+  return (
+    <div className="recent-months" aria-label="Últimos meses">
+      <span className="muted">Últimos meses:</span>
+      {months.map((month) => {
+        const state = month.closed ? 'closed' : month.started ? 'open' : 'idle'
+        return (
+          <button
+            key={month.competence}
+            type="button"
+            className={`month-tag month-tag-${state}${month.competence === current ? ' month-tag-current' : ''}`}
+            aria-pressed={month.competence === current}
+            title={month.closed ? 'Mês fechado' : month.started ? 'Em andamento' : 'Não iniciado'}
+            onClick={() => onSelect(month.competence)}
+          >
+            {month.closed && <LockIcon />}
+            {shortMonth(month.competence)}
+            {!month.closed && month.started && ` · ${month.done} de ${month.total}`}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -370,10 +424,12 @@ interface TaskListProps {
   sort: SortState<TaskSortField> | null
   onSort: (sort: SortState<TaskSortField> | null) => void
   onOpenBalances: () => void
+  /** After a task changes: the strip of recent months follows. */
+  onChanged: () => void
 }
 
 function TaskList(props: TaskListProps) {
-  const { initial, companyId, competence, statusFilter, filter, filtering, sort, onSort, onOpenBalances } = props
+  const { initial, companyId, competence, statusFilter, filter, filtering, sort, onSort, onOpenBalances, onChanged } = props
   const [tasks, setTasks] = useState(initial)
   const [lastInitial, setLastInitial] = useState(initial)
   if (initial !== lastInitial) {
@@ -384,6 +440,8 @@ function TaskList(props: TaskListProps) {
   const [history, setHistory] = useState<NumberedTask | null>(null)
   const numbered: NumberedTask[] = tasks.map((task, index) => ({ ...task, number: index + 1 }))
   const total = progress(tasks)
+  // The seal's date: the last conclusion of the month (the automatic balance task has none of its own).
+  const closedAt = tasks.map((task) => (task.status === 'DONE' ? task.doneAt : null)).filter(Boolean).sort().at(-1) ?? null
   const name = normalize(filter.name.trim())
   const shown = numbered.filter(
     (task) =>
@@ -413,6 +471,7 @@ function TaskList(props: TaskListProps) {
         saved = await send(true)
       }
       setTasks((current) => current.map((item) => (item.templateId === saved.templateId ? saved : item)))
+      onChanged()
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 428) return
       setError(`${task.name}: ${errorMessage(caught)}`)
@@ -428,6 +487,11 @@ function TaskList(props: TaskListProps) {
             {total.done} de {total.total}
           </strong>
           <ProgressBar {...total} />
+          {total.total > 0 && total.done === total.total && (
+            <span className="month-seal">
+              <LockIcon /> Mês fechado{closedAt ? ` · ${formatInstantDate(closedAt)}` : ''}
+            </span>
+          )}
         </div>
       </div>
       <ErrorBanner message={error} />

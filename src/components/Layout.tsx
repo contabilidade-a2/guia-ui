@@ -35,21 +35,27 @@ interface MenuAccess {
   canManageCompanies: boolean
   canManageInstallmentPlans: boolean
   canUseClosing: boolean
+  isAccounting: boolean
 }
 
 function menuGroups(access: MenuAccess): MenuGroup[] {
-  const { isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing } = access
+  const { isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing, isAccounting } = access
   const groups: MenuGroup[] = [
     {
       label: 'Guias',
       items: [{ label: 'Guias', to: '/slips' }, ...(canManageInstallmentPlans ? [{ label: 'Parcelamentos', to: '/installment-plans' }] : [])],
     },
-    // Importação contábil is still to come (administrator only); Controle contábil is for whoever may use it.
+    // Importação contábil is still to come. Controle contábil is a link for whoever may use it; Accounting, until the
+    // administrator allows it, sees both as "em breve", just to know they are on the way (asked on 26/11/2026).
     {
       label: 'Contábil',
       items: [
-        ...(isAdmin ? [{ label: 'Importação contábil' }] : []),
-        ...(canUseClosing ? [{ label: 'Controle contábil', to: '/closing' }] : []),
+        ...(isAdmin || isAccounting ? [{ label: 'Importação contábil' }] : []),
+        ...(canUseClosing
+          ? [{ label: 'Controle contábil', to: '/closing' }]
+          : isAccounting
+            ? [{ label: 'Controle contábil' }]
+            : []),
       ],
     },
     {
@@ -144,6 +150,7 @@ function NavGroup({ group }: { group: MenuGroup }) {
 
 export function Layout() {
   const { user, isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing, logout } = useAuth()
+  const isAccounting = user?.role === 'ACCOUNTING'
   const location = useLocation()
   if (!user) return null
 
@@ -156,7 +163,7 @@ export function Layout() {
             Sistema Contábil
           </Link>
           {/* keyed by the route, like the user menu: a group's menu closes on any navigation */}
-          <MainNav key={`nav:${location.pathname}`} groups={menuGroups({ isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing })} />
+          <MainNav key={`nav:${location.pathname}`} groups={menuGroups({ isAdmin, canManageCompanies, canManageInstallmentPlans, canUseClosing, isAccounting })} />
           {/* keyed by the route so the menu closes on any navigation, the back button included */}
           <UserMenu key={location.pathname} name={user.name} role={ROLE_LABELS[user.role]} onLogout={logout} />
         </div>

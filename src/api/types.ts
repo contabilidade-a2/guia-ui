@@ -430,3 +430,12 @@ export interface TaskTemplate {
   appliesToAll: boolean
   companyIds: number[]
 }
+
+export interface MonthProgress {
+  /** `yyyy-MM` */
+  competence: string
+  done: number
+  total: number
+  started: boolean
+  closed: boolean
+}
