@@ -1852,17 +1852,33 @@ button.calendar-selected:hover {
     white-space: nowrap;
   }
 
+  /* wraps instead of scrolling sideways: a scrolling line would clip the group menus */
   .nav {
     order: 3;
     flex: 1 1 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0 1.25rem;
   }
 
-  .nav a {
+  .nav a,
+  .nav-group-button {
     padding: 0.75rem 0 0.6rem;
     white-space: nowrap;
+  }
+
+  /* the group's screens across the screen, so a group near the right edge does not open outside it */
+  .topbar-inner {
+    position: relative;
+  }
+
+  .nav-group {
+    position: static;
+  }
+
+  .nav-menu {
+    left: 1rem;
+    right: 1rem;
+    top: auto;
   }
 }
 
