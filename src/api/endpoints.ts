@@ -2,6 +2,7 @@ import { firstDayOfMonth, lastDayOfMonth } from '../lib/format'
 import { request } from './client'
 import type {
   BankHolder,
+  Overview,
   DayDetail,
   MonthProgress,
   ClosingTask,
@@ -189,6 +190,9 @@ export const closingApi = {
     templateId: number,
     input: { companyId: number; competence: string; status: TaskStatus; note: string | null; confirmDependency?: boolean },
   ) => request<ClosingTask>('PUT', `/api/closing/tasks/${templateId}`, input),
+  /** Every active company over a period; without months, the current fiscal year up to the previous month. */
+  overview: (from: string, to: string) =>
+    request<Overview>('GET', `/api/closing/overview${from && to ? `?from=${from}&to=${to}` : ''}`),
   /** The last three months up to the current one, oldest first. */
   recentMonths: (companyId: number) => request<MonthProgress[]>('GET', `/api/closing/tasks/months?companyId=${companyId}`),
   taskHistory: (templateId: number, companyId: number, competence: string) =>

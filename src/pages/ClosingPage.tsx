@@ -11,6 +11,7 @@ import type {
   HolderType,
   ImportReport,
   MonthProgress,
+  OverviewMonth,
   ClosingCompany,
   ClosingTask,
   PhaseDependency,
@@ -41,12 +42,12 @@ import {
 import { normalize, onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 
-type Tab = 'month' | 'balances' | 'holders' | 'companies' | 'catalog'
+type Tab = 'overview' | 'month' | 'balances' | 'holders' | 'companies' | 'catalog'
 
 /** Controle contábil, etapa 1: the monthly balance panel of the bank holders, and (administrator) its settings. */
 export function ClosingPage() {
   const { isAdmin } = useAuth()
-  const [tab, setTab] = useState<Tab>('month')
+  const [tab, setTab] = useState<Tab>('overview')
   const access = useLoad(() => closingApi.access(), [])
   const companies = useLoad(() => closingApi.activeCompanies(), [])
   // The month and company are shared by Fechamento and Saldos: opening the balances keeps the same period.
@@ -79,6 +80,15 @@ export function ClosingPage() {
       </div>
       <ErrorBanner message={access.error ?? companies.error} onRetry={access.error ? access.reload : companies.reload} />
       {(access.loading || companies.loading) && !period && <Loading />}
+      {access.data && tab === 'overview' && (
+        <OverviewSection
+          onOpen={(company, month) => {
+            setCompanyId(company)
+            setCompetence(month)
+            setTab('month')
+          }}
+        />
+      )}
       {period && tab === 'month' && <MonthView period={period} onOpenBalances={() => setTab('balances')} />}
       {period && tab === 'balances' && <BalancePanel period={period} canImport={isAdmin} />}
       {access.data && tab === 'holders' && <HoldersSection />}
@@ -124,6 +134,9 @@ function SectionTabs({ tab, onChange, withRegisters }: { tab: Tab; onChange: (ta
 
   return (
     <div className="segmented segmented-strong section-tabs" role="group" aria-label="Seção" ref={ref}>
+      <button type="button" aria-pressed={tab === 'overview'} onClick={() => onChange('overview')}>
+        Acompanhamento
+      </button>
       <button type="button" aria-pressed={tab === 'month'} onClick={() => onChange('month')}>
         Fechamento
       </button>
@@ -205,6 +218,124 @@ function PeriodWarnings({ period }: { period: Period }) {
     )
   }
   return null
+}
+
+// ---------- Acompanhamento: every company over a period (asked by the user on 26/11/2026) ----------
+
+/**
+ * The grid of months chosen by the user: one row per active company with the % of the period and a small cell per
+ * month (before the control: faded, counts as 100%; closed: lock; in progress: %; not started: grey). Opens on the
+ * current fiscal year up to the previous month; a click on a month opens its Fechamento.
+ */
+function OverviewSection({ onOpen }: { onOpen: (companyId: number, competence: string) => void }) {
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const valid = from === '' && to === '' ? true : from !== '' && to !== '' && from <= to
+  const overview = useLoad(() => closingApi.overview(valid ? from : '', valid ? to : ''), [valid ? from : '', valid ? to : ''])
+  const data = overview.data
+  // The first answer brings the default period; the fields show it from then on.
+  if (data && from === '' && to === '') {
+    setFrom(data.from)
+    setTo(data.to)
+  }
+  const label = data ? `${shortMonth(data.from)} a ${shortMonth(data.to)}` : ''
+
+  return (
+    <>
+      <div className="card filters filters-overview">
+        <Field label="De">
+          <MonthInput value={from} onChange={setFrom} label="De" />
+        </Field>
+        <Field label="Até">
+          <MonthInput value={to} onChange={setTo} label="Até" />
+        </Field>
+      </div>
+      {!valid && from !== '' && to !== '' && <div className="banner banner-error">O mês inicial não pode ser depois do final.</div>}
+      <ErrorBanner message={overview.error} onRetry={overview.reload} />
+      {overview.loading && !data && <Loading />}
+      {data && (
+        <>
+          <div className="overview-tiles">
+            <div className="card overview-tile">
+              <span>{label}</span>
+              <strong>{data.percent}%</strong>
+              <small>todas as empresas</small>
+            </div>
+            <div className="card overview-tile">
+              <span>Meses fechados</span>
+              <strong>
+                {data.closedMonths} de {data.controlMonths}
+              </strong>
+            </div>
+            <div className="card overview-tile">
+              <span>Empresas em dia</span>
+              <strong>
+                {data.upToDate} de {data.companies.length}
+              </strong>
+            </div>
+          </div>
+          <div className="card table-wrapper">
+            <table className="overview-table">
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>No período</th>
+                  <th>Meses</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.companies.map((company) => (
+                  <tr key={company.id}>
+                    <td className="overview-company">{company.name}</td>
+                    <td>
+                      <span className="overview-percent">
+                        {company.percent}%
+                        <ProgressBar done={company.percent} total={100} />
+                      </span>
+                    </td>
+                    <td>
+                      <div className="overview-months">
+                        {company.months.map((month) => (
+                          <OverviewCell key={month.competence} month={month} onOpen={() => onOpen(company.id, month.competence)} />
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {data.companies.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="muted empty-row">
+                      Nenhuma empresa do fechamento está ativa.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
+function OverviewCell({ month, onOpen }: { month: OverviewMonth; onOpen: () => void }) {
+  const name = MONTH_SHORT[Number(month.competence.slice(5)) - 1]
+  if (month.beforeControl) {
+    return (
+      <span className="overview-cell overview-cell-before" title={`${shortMonth(month.competence)} · antes do controle`}>
+        {name}
+        <em>100%</em>
+      </span>
+    )
+  }
+  const state = month.closed ? 'closed' : month.started ? 'open' : 'idle'
+  const title = `${shortMonth(month.competence)} · ${month.done} de ${month.total} tarefas`
+  return (
+    <button type="button" className={`overview-cell overview-cell-${state}`} title={title} onClick={onOpen}>
+      {name}
+      <em>{month.closed ? <LockIcon /> : `${month.percent}%`}</em>
+    </button>
+  )
 }
 
 // ---------- the month: tasks by stage (etapa 2) ----------

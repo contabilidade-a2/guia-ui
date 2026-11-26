@@ -455,3 +455,33 @@ export interface DayDetail {
   startups: number
   users: DayUser[]
 }
+
+export interface OverviewMonth {
+  /** `yyyy-MM` */
+  competence: string
+  /** Before the control started: counts as done. */
+  beforeControl: boolean
+  done: number
+  total: number
+  started: boolean
+  closed: boolean
+  percent: number
+}
+
+export interface OverviewCompany {
+  id: number
+  name: string
+  percent: number
+  months: OverviewMonth[]
+}
+
+export interface Overview {
+  from: string
+  to: string
+  firstCompetence: string
+  percent: number
+  closedMonths: number
+  controlMonths: number
+  upToDate: number
+  companies: OverviewCompany[]
+}

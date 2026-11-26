@@ -2789,3 +2789,112 @@ td.nowrap {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+/* Controle contábil: Acompanhamento (every company over a period, 26/11/2026) */
+.filters-overview {
+  grid-template-columns: 8rem 8rem;
+}
+
+.overview-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.overview-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1rem 1.25rem;
+}
+
+.overview-tile span,
+.overview-tile small {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.overview-tile strong {
+  font-size: 1.6rem;
+}
+
+.overview-table td {
+  vertical-align: middle;
+}
+
+.overview-company {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.overview-percent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.overview-months {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.overview-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 2.7rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1.15;
+}
+
+.overview-cell em {
+  font-style: normal;
+  font-size: 0.64rem;
+}
+
+button.overview-cell {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button.overview-cell:hover {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.overview-cell-before {
+  background: var(--paid-soft);
+  color: var(--paid);
+  opacity: 0.55;
+}
+
+.overview-cell-closed {
+  background: var(--paid-soft);
+  color: var(--paid);
+}
+
+.overview-cell-open {
+  background: var(--pending-soft);
+  color: var(--pending);
+}
+
+.overview-cell-idle {
+  background: var(--neutral-soft);
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .overview-tiles {
+    grid-template-columns: 1fr;
+  }
+}
