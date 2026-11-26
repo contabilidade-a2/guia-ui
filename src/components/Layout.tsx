@@ -26,7 +26,8 @@ interface MenuGroup {
 }
 
 /**
- * The menu (layout chosen by the user on 25/11/2026): the calendar alone, then the screens grouped. Each profile sees
+ * The menu (layout chosen by the user on 25/11/2026; order Guias, Contábil, Cadastros, Administração since 26/11/2026):
+ * the calendar alone, then the screens grouped. Each profile sees
  * only its screens; a group left empty is hidden, and a group with a single screen becomes a plain link.
  */
 interface MenuAccess {
@@ -43,19 +44,19 @@ function menuGroups(access: MenuAccess): MenuGroup[] {
       label: 'Guias',
       items: [{ label: 'Guias', to: '/slips' }, ...(canManageInstallmentPlans ? [{ label: 'Parcelamentos', to: '/installment-plans' }] : [])],
     },
-    {
-      label: 'Cadastros',
-      items: [
-        ...(canManageCompanies ? [{ label: 'Empresas', to: '/companies' }] : []),
-        ...(isAdmin ? [{ label: 'Tipos de guia', to: '/slip-types' }, { label: 'Usuários', to: '/users' }] : []),
-      ],
-    },
     // Importação contábil is still to come (administrator only); Controle contábil is for whoever may use it.
     {
       label: 'Contábil',
       items: [
         ...(isAdmin ? [{ label: 'Importação contábil' }] : []),
         ...(canUseClosing ? [{ label: 'Controle contábil', to: '/closing' }] : []),
+      ],
+    },
+    {
+      label: 'Cadastros',
+      items: [
+        ...(canManageCompanies ? [{ label: 'Empresas', to: '/companies' }] : []),
+        ...(isAdmin ? [{ label: 'Tipos de guia', to: '/slip-types' }, { label: 'Usuários', to: '/users' }] : []),
       ],
     },
     {
