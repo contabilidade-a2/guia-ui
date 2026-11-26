@@ -2766,3 +2766,26 @@ td.nowrap {
   font-weight: 600;
   font-size: 0.82rem;
 }
+
+/* Uso: the last week, with who used the system each day */
+.usage-users-button {
+  font-weight: 600;
+}
+
+.usage-users-row > td {
+  background: var(--surface-muted);
+}
+
+.usage-users {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.usage-users li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

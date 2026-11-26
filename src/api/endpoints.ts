@@ -2,6 +2,7 @@ import { firstDayOfMonth, lastDayOfMonth } from '../lib/format'
 import { request } from './client'
 import type {
   BankHolder,
+  DayDetail,
   MonthProgress,
   ClosingTask,
   PhaseDependency,
@@ -161,6 +162,8 @@ export const usageApi = {
   summary: (month: string) => request<UsageSummary>('GET', `/api/usage/summary${month ? `?month=${month}` : ''}`),
   /** E-mails left today (read from Brevo) and the database size, against the free plans' limits. */
   limits: () => request<PlanLimits>('GET', '/api/usage/limits'),
+  /** The last seven days, newest first, with who used the system each day. */
+  lastWeek: () => request<DayDetail[]>('GET', '/api/usage/last-week'),
 }
 
 export const closingApi = {

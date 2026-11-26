@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { PlanLimits } from '../api/types'
 import { usageApi } from '../api/endpoints'
 import { MonthInput } from '../components/MonthInput'
@@ -80,35 +80,7 @@ export function UsagePage() {
                 </tbody>
               </table>
             </div>
-            <div className="card table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Dia</th>
-                    <th>Chamadas</th>
-                    <th>Usuários</th>
-                    <th>Acordou</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.days.map((day) => (
-                    <tr key={day.date}>
-                      <td>{formatDate(day.date)}</td>
-                      <td>{day.calls}</td>
-                      <td>{day.users}</td>
-                      <td>{day.startups}</td>
-                    </tr>
-                  ))}
-                  {summary.days.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="muted empty-row">
-                        Nenhum uso registrado neste mês.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <LastWeek />
           </div>
         </>
       )}
@@ -240,5 +212,76 @@ function LimitsSection() {
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * The last seven days, whatever the month above (asked by the user on 26/11/2026): a click on the number of users
+ * opens who used the system that day, with their calls and the hours of use.
+ */
+function LastWeek() {
+  const week = useLoad(() => usageApi.lastWeek(), [])
+  const [open, setOpen] = useState<string | null>(null)
+  return (
+    <div className="card table-wrapper">
+      <ErrorBanner message={week.error} onRetry={week.reload} />
+      {week.loading && !week.data && <Loading />}
+      {week.data && (
+        <table className="usage-week">
+          <thead>
+            <tr>
+              <th>Dia</th>
+              <th>Chamadas</th>
+              <th>Usuários</th>
+              <th>Acordou</th>
+            </tr>
+          </thead>
+          <tbody>
+            {week.data.map((day) => (
+              <Fragment key={day.date}>
+                <tr>
+                  <td>{formatDate(day.date)}</td>
+                  <td>{day.calls}</td>
+                  <td>
+                    {day.users.length > 0 ? (
+                      <button
+                        type="button"
+                        className="link-button usage-users-button"
+                        aria-expanded={open === day.date}
+                        onClick={() => setOpen(open === day.date ? null : day.date)}
+                      >
+                        {day.users.length} {open === day.date ? '▴' : '▾'}
+                      </button>
+                    ) : (
+                      0
+                    )}
+                  </td>
+                  <td>{day.startups}</td>
+                </tr>
+                {open === day.date && (
+                  <tr className="usage-users-row">
+                    <td colSpan={4}>
+                      <ul className="usage-users">
+                        {day.users.map((user) => (
+                          <li key={user.name}>
+                            <strong>{user.name}</strong>
+                            <span className="muted">
+                              {user.calls} {user.calls === 1 ? 'chamada' : 'chamadas'} ·{' '}
+                              {user.firstHour === user.lastHour
+                                ? `${user.firstHour}h`
+                                : `das ${user.firstHour}h às ${user.lastHour + 1}h`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   )
 }

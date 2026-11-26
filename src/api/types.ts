@@ -439,3 +439,19 @@ export interface MonthProgress {
   started: boolean
   closed: boolean
 }
+
+/** Who used the system in a day; hours are 0–23 in Brazil. */
+export interface DayUser {
+  name: string
+  calls: number
+  firstHour: number
+  lastHour: number
+}
+
+export interface DayDetail {
+  /** `yyyy-MM-dd` */
+  date: string
+  calls: number
+  startups: number
+  users: DayUser[]
+}
