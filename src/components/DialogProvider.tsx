@@ -20,7 +20,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const prompt = useCallback(
     (options: PromptOptions) =>
       new Promise<string | null>((resolve) => {
-        setText('')
+        setText(options.initial ?? '')
         setOpen({ kind: 'prompt', options, resolve })
       }),
     [],

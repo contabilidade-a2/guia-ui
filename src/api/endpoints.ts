@@ -11,6 +11,7 @@ import type {
   TaskStatus,
   TaskTemplate,
   TaskTemplateInput,
+  PendingItem,
   BankHolderInput,
   CalendarDay,
   ClosingAccess,
@@ -202,6 +203,13 @@ export const closingApi = {
       `/api/closing/tasks/${templateId}/history?companyId=${companyId}&competence=${competence}`,
     ),
   taskTemplates: () => request<TaskTemplate[]>('GET', '/api/closing/task-templates'),
+  pending: (companyId: number, competence: string) =>
+    request<PendingItem[]>('GET', `/api/closing/pending?companyId=${companyId}&competence=${competence}`),
+  addPending: (companyId: number, competence: string, description: string) =>
+    request<PendingItem>('POST', '/api/closing/pending', { companyId, competence, description }),
+  changePending: (id: number, change: { description?: string; status: TaskStatus; note: string | null }) =>
+    request<PendingItem>('PUT', `/api/closing/pending/${id}`, change),
+  deletePending: (id: number) => request<void>('DELETE', `/api/closing/pending/${id}`),
   createTaskTemplate: (input: TaskTemplateInput) => request<TaskTemplate>('POST', '/api/closing/task-templates', input),
   updateTaskTemplate: (id: number, input: TaskTemplateInput) =>
     request<TaskTemplate>('PUT', `/api/closing/task-templates/${id}`, input),

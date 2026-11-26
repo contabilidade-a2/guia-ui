@@ -415,6 +415,21 @@ export interface ClosingTask {
   deadline: string | null
 }
 
+/** An item of the last stage, "Pendências": written by hand for one company and month. */
+export interface PendingItem {
+  id: number
+  description: string
+  /** PENDING, IN_PROGRESS or DONE. */
+  status: TaskStatus
+  note: string | null
+  createdBy: string
+  createdAt: string
+  doneBy: string | null
+  doneAt: string | null
+  updatedBy: string | null
+  updatedAt: string | null
+}
+
 export interface TaskHistoryItem {
   fromStatus: TaskStatus
   toStatus: TaskStatus

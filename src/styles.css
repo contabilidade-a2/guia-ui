@@ -2570,6 +2570,21 @@ td.nowrap {
   color: var(--muted);
 }
 
+/* Pendências: the line that adds a new item, at the end of the stage. */
+.pending-add-form {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.pending-add-form input {
+  flex: 1;
+}
+
+.task-menu .task-menu-danger {
+  color: var(--danger);
+}
+
 /* Annual tasks: the fiscal year and, for the ECD and the ECF, the deadline (red once it passed with the task open). */
 .task-annual {
   margin-top: 0.2rem;

@@ -13,6 +13,7 @@ import type {
   ImportReport,
   MonthProgress,
   OverviewMonth,
+  PendingItem,
   ClosingCompany,
   ClosingTask,
   PhaseDependency,
@@ -48,6 +49,9 @@ import { useLoad } from '../lib/useLoad'
 import { useDialogs } from '../components/dialogContext'
 
 type Tab = 'month' | 'balances' | 'holders' | 'companies' | 'catalog'
+
+/** The value of the Etapa filter for the last stage, "Pendências", which is not a phase of the catalog. */
+const PENDING_STAGE = 'pending'
 
 /** Controle contábil, etapa 1: the monthly balance panel of the bank holders, and (administrator) its settings. */
 export function ClosingPage() {
@@ -407,6 +411,10 @@ function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances:
     () => (companyId && valid ? closingApi.tasks(companyId, competence) : Promise.resolve([])),
     [companyId, competence],
   )
+  const pending = useLoad(
+    () => (companyId && valid ? closingApi.pending(companyId, competence) : Promise.resolve([])),
+    [companyId, competence],
+  )
   const [statusFilter, setStatusFilter] = useState<'' | TaskStatus>('')
   const [filter, setFilter] = useState<TaskFilter>(EMPTY_TASK_FILTER)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -418,10 +426,21 @@ function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances:
   )
 
   const responsibles = [
-    ...new Set((tasks.data ?? []).filter((task) => task.status === 'DONE' && task.doneBy).map((task) => task.doneBy as string)),
+    ...new Set(
+      [...(tasks.data ?? []), ...(pending.data ?? [])]
+        .filter((item) => item.status === 'DONE' && item.doneBy)
+        .map((item) => item.doneBy as string),
+    ),
   ].sort(byText)
   const chips: FilterChip[] = [
-    ...(filter.stage ? [{ label: `Etapa: ${PHASE_TITLES[Number(filter.stage)]}`, clear: () => setFilter({ ...filter, stage: '' }) }] : []),
+    ...(filter.stage
+      ? [
+          {
+            label: `Etapa: ${filter.stage === PENDING_STAGE ? 'Pendências' : PHASE_TITLES[Number(filter.stage)]}`,
+            clear: () => setFilter({ ...filter, stage: '' }),
+          },
+        ]
+      : []),
     ...(filter.name.trim() ? [{ label: `Tarefa: ${filter.name.trim()}`, clear: () => setFilter({ ...filter, name: '' }) }] : []),
     ...(filter.responsible
       ? [{ label: `Responsável: ${filter.responsible}`, clear: () => setFilter({ ...filter, responsible: '' }) }]
@@ -470,6 +489,7 @@ function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances:
                     {title}
                   </option>
                 ))}
+                <option value={PENDING_STAGE}>Pendências</option>
               </select>
             </Field>
             <Field label="Tarefa">
@@ -494,12 +514,13 @@ function MonthView({ period, onOpenBalances }: { period: Period; onOpenBalances:
         )}
       </div>
       <PeriodWarnings period={period} />
-      <ErrorBanner message={tasks.error} onRetry={tasks.reload} />
-      {tasks.loading && !tasks.data && <Loading />}
-      {tasks.data && companyId && valid && tasks.data.length > 0 && (
+      <ErrorBanner message={tasks.error ?? pending.error} onRetry={tasks.error ? tasks.reload : pending.reload} />
+      {(tasks.loading || pending.loading) && !(tasks.data && pending.data) && <Loading />}
+      {tasks.data && pending.data && companyId && valid && tasks.data.length > 0 && (
         <TaskList
           key={`${companyId}:${competence}`}
           initial={tasks.data}
+          initialPending={pending.data}
           companyId={companyId}
           competence={competence}
           statusFilter={statusFilter}
@@ -560,6 +581,7 @@ function RecentMonths({ months, current, onSelect }: { months: MonthProgress[]; 
 
 interface TaskListProps {
   initial: ClosingTask[]
+  initialPending: PendingItem[]
   companyId: number
   competence: string
   statusFilter: '' | TaskStatus
@@ -574,8 +596,15 @@ interface TaskListProps {
 
 function TaskList(props: TaskListProps) {
   const dialogs = useDialogs()
-  const { initial, companyId, competence, statusFilter, filter, filtering, sort, onSort, onOpenBalances, onChanged } = props
+  const { initial, initialPending, companyId, competence, statusFilter, filter, filtering, sort, onSort, onOpenBalances, onChanged } =
+    props
   const [tasks, setTasks] = useState(initial)
+  const [pending, setPending] = useState(initialPending)
+  const [lastPending, setLastPending] = useState(initialPending)
+  if (initialPending !== lastPending) {
+    setLastPending(initialPending)
+    setPending(initialPending)
+  }
   const [lastInitial, setLastInitial] = useState(initial)
   if (initial !== lastInitial) {
     setLastInitial(initial)
@@ -584,9 +613,51 @@ function TaskList(props: TaskListProps) {
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<NumberedTask | null>(null)
   const numbered: NumberedTask[] = tasks.map((task, index) => ({ ...task, number: index + 1 }))
-  const total = progress(tasks)
+  // The pending items count like tasks: an open one keeps the month open.
+  const taskTotal = progress(tasks)
+  const total = {
+    done: taskTotal.done + pending.filter((item) => item.status === 'DONE').length,
+    total: taskTotal.total + pending.length,
+  }
   // The seal's date: the last conclusion of the month (the automatic balance task has none of its own).
-  const closedAt = tasks.map((task) => (task.status === 'DONE' ? task.doneAt : null)).filter(Boolean).sort().at(-1) ?? null
+  const closedAt =
+    [...tasks, ...pending].map((item) => (item.status === 'DONE' ? item.doneAt : null)).filter(Boolean).sort().at(-1) ?? null
+
+  async function addPending(description: string): Promise<boolean> {
+    setError(null)
+    try {
+      const saved = await closingApi.addPending(companyId, competence, description)
+      setPending((current) => [...current, saved])
+      onChanged()
+      return true
+    } catch (caught) {
+      setError(errorMessage(caught))
+      return false
+    }
+  }
+
+  async function changePending(item: PendingItem, change: { status: TaskStatus; note: string | null; description?: string }) {
+    setError(null)
+    try {
+      const saved = await closingApi.changePending(item.id, { ...change, note: change.note?.trim() || null })
+      setPending((current) => current.map((other) => (other.id === saved.id ? saved : other)))
+      onChanged()
+    } catch (caught) {
+      setError(`${item.description}: ${errorMessage(caught)}`)
+    }
+  }
+
+  async function deletePending(item: PendingItem) {
+    if (!(await dialogs.confirm({ title: 'Excluir pendência', message: item.description, confirmLabel: 'Excluir', danger: true }))) return
+    setError(null)
+    try {
+      await closingApi.deletePending(item.id)
+      setPending((current) => current.filter((other) => other.id !== item.id))
+      onChanged()
+    } catch (caught) {
+      setError(errorMessage(caught))
+    }
+  }
   const name = normalize(filter.name.trim())
   const shown = numbered.filter(
     (task) =>
@@ -596,6 +667,13 @@ function TaskList(props: TaskListProps) {
       (!filter.responsible || (task.status === 'DONE' && task.doneBy === filter.responsible)),
   )
   const phases = [...new Set(tasks.map((task) => task.phase))].sort()
+  const shownPending = pending.filter(
+    (item) =>
+      (!statusFilter || item.status === statusFilter) &&
+      (!filter.stage || filter.stage === PENDING_STAGE) &&
+      (!name || normalize(item.description).includes(name)) &&
+      (!filter.responsible || (item.status === 'DONE' && item.doneBy === filter.responsible)),
+  )
 
   async function change(task: ClosingTask, status: TaskStatus, note: string | null) {
     setError(null)
@@ -666,11 +744,227 @@ function TaskList(props: TaskListProps) {
           />
         )
       })}
+      {(!filtering || shownPending.length > 0) && (!filter.stage || filter.stage === PENDING_STAGE) && (
+        <PendingStage
+          items={shownPending}
+          firstNumber={tasks.length + 1}
+          canAdd={!filtering}
+          onAdd={addPending}
+          onChange={changePending}
+          onDelete={deletePending}
+        />
+      )}
       {filtering && shown.length === 0 && <p className="muted">Nenhuma tarefa com estes filtros.</p>}
       {history && (
         <TaskHistoryModal task={history} companyId={companyId} competence={competence} onClose={() => setHistory(null)} />
       )}
     </>
+  )
+}
+
+// ---------- Pendências: the last stage, items written by hand for the company and month (asked on 26/11/2026) ----------
+
+const PENDING_STATUSES: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'DONE']
+
+interface PendingStageProps {
+  items: PendingItem[]
+  /** The number of the first item: the pending items continue the numbering of the tasks. */
+  firstNumber: number
+  /** Without filters the stage is always shown, with the line to add a new item. */
+  canAdd: boolean
+  onAdd: (description: string) => Promise<boolean>
+  onChange: (item: PendingItem, change: { status: TaskStatus; note: string | null; description?: string }) => void
+  onDelete: (item: PendingItem) => void
+}
+
+function PendingStage({ items, firstNumber, canAdd, onAdd, onChange, onDelete }: PendingStageProps) {
+  const [open, setOpen] = useState(true)
+  const [text, setText] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  async function add(event: FormEvent) {
+    event.preventDefault()
+    if (!text.trim()) return
+    setAdding(true)
+    if (await onAdd(text.trim())) setText('')
+    setAdding(false)
+  }
+
+  return (
+    <section className="card closing-group">
+      <button type="button" className="closing-group-header" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="closing-group-caret" aria-hidden="true">
+          {open ? '▾' : '▸'}
+        </span>
+        <h2>Pendências</h2>
+      </button>
+      {open && (
+        <div className="table-wrapper">
+          <table className="closing-table task-table">
+            <thead>
+              <tr>
+                <th className="task-check" aria-label="Concluída" />
+                <th>Nº</th>
+                <th>Pendência</th>
+                <th>Status</th>
+                <th>Responsável</th>
+                <th>Observação</th>
+                <th aria-label="Ações" />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => (
+                <PendingLine key={item.id} item={item} number={firstNumber + index} onChange={onChange} onDelete={onDelete} />
+              ))}
+              {canAdd && (
+                <tr className="pending-add">
+                  <td />
+                  <td colSpan={6}>
+                    <form className="pending-add-form" onSubmit={add}>
+                      <input
+                        aria-label="Nova pendência"
+                        placeholder="Nova pendência"
+                        maxLength={300}
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                      />
+                      <button type="submit" className="button button-small" disabled={adding || !text.trim()}>
+                        Adicionar
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
+interface PendingLineProps {
+  item: PendingItem
+  number: number
+  onChange: (item: PendingItem, change: { status: TaskStatus; note: string | null; description?: string }) => void
+  onDelete: (item: PendingItem) => void
+}
+
+function PendingLine({ item, number, onChange, onDelete }: PendingLineProps) {
+  const dialogs = useDialogs()
+  const [note, setNote] = useState(item.note ?? '')
+  const [lastNote, setLastNote] = useState(item.note)
+  if (item.note !== lastNote) {
+    setLastNote(item.note)
+    setNote(item.note ?? '')
+  }
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!menuOpen) return
+    const onPointerDown = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && setMenuOpen(false)
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen])
+  const done = item.status === 'DONE'
+
+  async function edit() {
+    setMenuOpen(false)
+    const description = await dialogs.prompt({ title: 'Editar pendência', label: 'Pendência', initial: item.description, confirmLabel: 'Salvar' })
+    if (description && description !== item.description) onChange(item, { status: item.status, note, description })
+  }
+
+  return (
+    <tr className="task-row">
+      <td className="task-check">
+        <input
+          type="checkbox"
+          aria-label={`Pendência ${number}: concluída`}
+          checked={done}
+          onChange={(e) => onChange(item, { status: e.target.checked ? 'DONE' : 'PENDING', note })}
+        />
+      </td>
+      <td className="task-number">{number}</td>
+      <td>
+        <div className="task-name" title={`Incluída por ${item.createdBy} em ${formatDateTime(item.createdAt)}`}>
+          {item.description}
+        </div>
+      </td>
+      <td>
+        <span className={`badge ${TASK_STATUS_BADGES[item.status]}`}>{TASK_STATUS_LABELS[item.status]}</span>
+      </td>
+      <td className="task-who">
+        {done && item.doneBy ? (
+          <span title={item.doneAt ? formatDateTime(item.doneAt) : undefined}>{item.doneBy}</span>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
+      <td>
+        <input
+          className="closing-note"
+          aria-label={`Pendência ${number}: observação`}
+          maxLength={500}
+          value={note}
+          placeholder="—"
+          onChange={(e) => setNote(e.target.value)}
+          onBlur={() => note.trim() !== (item.note ?? '') && onChange(item, { status: item.status, note })}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+      </td>
+      <td className="row-actions task-actions">
+        <span className="task-menu-wrapper" ref={menuRef}>
+          <button
+            type="button"
+            className="icon-action"
+            title="Mais ações"
+            aria-label={`Mais ações da pendência ${number}`}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            ⋯
+          </button>
+          {menuOpen && (
+            <span className="task-menu" role="menu">
+              {PENDING_STATUSES.filter((status) => status !== item.status).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onChange(item, { status, note })
+                  }}
+                >
+                  {TASK_STATUS_LABELS[status]}
+                </button>
+              ))}
+              <button type="button" role="menuitem" onClick={edit}>
+                Editar
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="task-menu-danger"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onDelete(item)
+                }}
+              >
+                Excluir
+              </button>
+            </span>
+          )}
+        </span>
+      </td>
+    </tr>
   )
 }
 

@@ -12,6 +12,8 @@ export interface ConfirmOptions {
 export interface PromptOptions extends ConfirmOptions {
   /** Label of the text box. */
   label: string
+  /** Text already in the box (editing). */
+  initial?: string
 }
 
 export interface Dialogs {
