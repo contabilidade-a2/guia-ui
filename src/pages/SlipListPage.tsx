@@ -13,6 +13,7 @@ import type { Page, SlipSummary } from '../api/types'
 import { DELETE_SLIP_CONFIRMATION, ORIGIN_LABELS, SLIP_STATUS_LABELS, formatDate, formatInstantDate, formatMoney } from '../lib/format'
 import { onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
+import { useDialogs } from '../components/dialogContext'
 
 const PAGE_SIZE = 20
 
@@ -46,6 +47,7 @@ function amountSummary(from: string, to: string): string {
 }
 
 export function SlipListPage() {
+  const dialogs = useDialogs()
   const { canEditSlips } = useAuth()
   const [filters, setFilters] = useState<SlipFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
@@ -143,7 +145,7 @@ export function SlipListPage() {
   }
 
   async function remove(slip: SlipSummary) {
-    if (!window.confirm(`${slip.subject}\n\n${DELETE_SLIP_CONFIRMATION}`)) return
+    if (!(await dialogs.confirm({ title: 'Excluir guia', message: `${slip.subject}\n\n${DELETE_SLIP_CONFIRMATION}`, confirmLabel: 'Excluir', danger: true }))) return
     setDeleteError(null)
     try {
       await slipsApi.remove(slip.id)

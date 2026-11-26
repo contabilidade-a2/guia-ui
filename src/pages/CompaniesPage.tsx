@@ -8,6 +8,7 @@ import { normalize, onlyDigits } from '../lib/text'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { ErrorBanner, Field, Loading, Modal, Segmented, SortableHeader } from '../components/ui'
 import { useLoad } from '../lib/useLoad'
+import { useDialogs } from '../components/dialogContext'
 
 /** Names of the users notified about a company's slips, for the list column. */
 function userNames(userIds: number[], users: User[]): string {
@@ -90,6 +91,7 @@ function sortCompanies(companies: Company[], sort: SortState<CompanySortField> |
 }
 
 export function CompaniesPage() {
+  const dialogs = useDialogs()
   const companies = useLoad(() => companiesApi.list(), [])
   const users = useLoad(() => usersApi.list(), [])
   /** `null` = closed, `'new'` = creating, otherwise the company being edited. */
@@ -108,7 +110,7 @@ export function CompaniesPage() {
   }
 
   async function remove(company: Company) {
-    if (!window.confirm(`Excluir a empresa "${company.name}"?`)) return
+    if (!(await dialogs.confirm({ title: 'Excluir empresa', message: company.name, confirmLabel: 'Excluir', danger: true }))) return
     setError(null)
     try {
       await companiesApi.remove(company.id)

@@ -19,6 +19,7 @@ import {
   relativeDay,
   todayIso,
 } from '../lib/format'
+import { useDialogs } from '../components/dialogContext'
 
 export function SlipDetailPage() {
   const slipId = Number(useParams().id)
@@ -27,6 +28,7 @@ export function SlipDetailPage() {
 }
 
 function SlipDetailView({ slipId }: { slipId: number }) {
+  const dialogs = useDialogs()
   const { canEditSlips, canRegisterPayment } = useAuth()
   const navigate = useNavigate()
 
@@ -61,7 +63,7 @@ function SlipDetailView({ slipId }: { slipId: number }) {
   }
 
   async function deleteSlip() {
-    if (!window.confirm(DELETE_SLIP_CONFIRMATION)) return
+    if (!(await dialogs.confirm({ title: 'Excluir guia', message: DELETE_SLIP_CONFIRMATION, confirmLabel: 'Excluir', danger: true }))) return
     setError(null)
     try {
       await slipsApi.remove(slipId)
@@ -72,7 +74,7 @@ function SlipDetailView({ slipId }: { slipId: number }) {
   }
 
   async function removeReceipt() {
-    if (!window.confirm('Remover o comprovante? A guia deixa de constar como paga e a data de pagamento é apagada.')) return
+    if (!(await dialogs.confirm({ title: 'Remover comprovante', message: 'A guia deixa de constar como paga e a data de pagamento é apagada.', confirmLabel: 'Remover', danger: true }))) return
     setError(null)
     try {
       await onPaymentChanged(await slipsApi.removePayment(slipId))

@@ -9,8 +9,10 @@ import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { ErrorBanner, Field, Loading, Modal, Segmented } from '../components/ui'
 import { ROLE_LABELS, formatDateTime } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
+import { useDialogs } from '../components/dialogContext'
 
 export function UsersPage() {
+  const dialogs = useDialogs()
   const { user: currentUser } = useAuth()
   const users = useLoad(() => usersApi.list(), [])
   /** `null` = closed, `'new'` = creating, otherwise the user being edited. */
@@ -18,7 +20,7 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null)
 
   async function remove(user: User) {
-    if (!window.confirm(`Excluir o usuário "${user.name}"?`)) return
+    if (!(await dialogs.confirm({ title: 'Excluir usuário', message: user.name, confirmLabel: 'Excluir', danger: true }))) return
     setError(null)
     try {
       await usersApi.remove(user.id)

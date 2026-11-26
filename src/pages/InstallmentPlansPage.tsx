@@ -21,6 +21,7 @@ import { ErrorBanner, Field, Loading, Modal, Segmented, SortableHeader } from '.
 import { INSTALLMENT_STATUS_LABELS, ORIGIN_LABELS, STATE_LABELS } from '../lib/format'
 import { onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
+import { useDialogs } from '../components/dialogContext'
 
 const PAGE_SIZE = 20
 
@@ -33,6 +34,7 @@ const EMPTY_FILTERS: InstallmentPlanFilters = {
 }
 
 export function InstallmentPlansPage() {
+  const dialogs = useDialogs()
   const { canManageInstallmentPlans } = useAuth()
   const [filters, setFilters] = useState<InstallmentPlanFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
@@ -86,7 +88,7 @@ export function InstallmentPlansPage() {
   }, [cigamInput])
 
   async function remove(plan: InstallmentPlan) {
-    if (!window.confirm(`Excluir o ${plan.subject}?`)) return
+    if (!(await dialogs.confirm({ title: 'Excluir parcelamento', message: plan.subject, confirmLabel: 'Excluir', danger: true }))) return
     setError(null)
     try {
       await installmentPlansApi.remove(plan.id)

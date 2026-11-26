@@ -9,6 +9,7 @@ import { MultiSelect } from '../components/MultiSelect'
 import { ErrorBanner, Field, Loading, Modal, SendStatusBadge, SlipStatusBadge } from '../components/ui'
 import { HISTORY_EVENT_LABELS, SLIP_STATUS_LABELS, formatDate, formatDateTime, formatMonth, formatMoney } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
+import { useDialogs } from '../components/dialogContext'
 
 const PAGE_SIZE = 20
 
@@ -33,6 +34,7 @@ const RESTORE_CONFIRMATION =
 
 /** Administrator only: what was deleted, when and by whom, kept by the server for 6 months and restorable. */
 export function DeletedSlipsPage() {
+  const dialogs = useDialogs()
   const navigate = useNavigate()
   const [filters, setFilters] = useState<DeletedSlipFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
@@ -62,7 +64,7 @@ export function DeletedSlipsPage() {
   }
 
   async function restore(slip: DeletedSlip) {
-    if (!window.confirm(`${slip.subject}\n\n${RESTORE_CONFIRMATION}`)) return
+    if (!(await dialogs.confirm({ title: 'Restaurar guia', message: `${slip.subject}\n\n${RESTORE_CONFIRMATION}`, confirmLabel: 'Restaurar' }))) return
     setViewing(null)
     setRestoreError(null)
     try {

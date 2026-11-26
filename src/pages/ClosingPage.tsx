@@ -41,6 +41,7 @@ import {
 } from '../lib/format'
 import { normalize, onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
+import { useDialogs } from '../components/dialogContext'
 
 type Tab = 'overview' | 'month' | 'balances' | 'holders' | 'companies' | 'catalog'
 
@@ -563,6 +564,7 @@ interface TaskListProps {
 }
 
 function TaskList(props: TaskListProps) {
+  const dialogs = useDialogs()
   const { initial, companyId, competence, statusFilter, filter, filtering, sort, onSort, onOpenBalances, onChanged } = props
   const [tasks, setTasks] = useState(initial)
   const [lastInitial, setLastInitial] = useState(initial)
@@ -590,9 +592,14 @@ function TaskList(props: TaskListProps) {
     setError(null)
     let text = note?.trim() ? note.trim() : null
     if (task.kind === 'CALCULATED' && status === 'DONE' && !task.automatic && !text) {
-      const typed = window.prompt('Ainda há portadores pendentes ou divergentes. Para concluir mesmo assim, escreva uma observação:')
-      if (!typed?.trim()) return
-      text = typed.trim()
+      const typed = await dialogs.prompt({
+        title: 'Portadores pendentes',
+        message: 'Ainda há portadores pendentes ou divergentes.',
+        label: 'Observação',
+        confirmLabel: 'Concluir',
+      })
+      if (!typed) return
+      text = typed
     }
     const send = (confirmDependency: boolean) =>
       closingApi.changeTask(task.templateId, { companyId, competence, status, note: text, confirmDependency })
@@ -601,13 +608,14 @@ function TaskList(props: TaskListProps) {
       try {
         saved = await send(false)
       } catch (caught) {
-        if (!(caught instanceof ApiError) || caught.status !== 428 || !window.confirm(caught.message)) throw caught
+        if (!(caught instanceof ApiError) || caught.status !== 428) throw caught
+        if (!(await dialogs.confirm({ title: 'Etapa anterior aberta', message: caught.message, confirmLabel: 'Concluir mesmo assim' })))
+          return
         saved = await send(true)
       }
       setTasks((current) => current.map((item) => (item.templateId === saved.templateId ? saved : item)))
       onChanged()
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 428) return
       setError(`${task.name}: ${errorMessage(caught)}`)
     }
   }
@@ -1559,6 +1567,7 @@ function BalanceLine({ row, onSave }: { row: HolderBalance; onSave: (row: Holder
 // ---------- holders (administrator) ----------
 
 function HoldersSection() {
+  const dialogs = useDialogs()
   const holders = useLoad(() => closingApi.holders(), [])
   const companies = useLoad(() => closingApi.companyOptions(), [])
   const [editing, setEditing] = useState<BankHolder | 'new' | null>(null)
@@ -1585,7 +1594,7 @@ function HoldersSection() {
   const companyName = (id: number) => closingCompanies.find((company) => company.id === id)?.name ?? `#${id}`
 
   async function remove(holder: BankHolder) {
-    if (!window.confirm(`Excluir o portador ${holder.code}?`)) return
+    if (!(await dialogs.confirm({ title: 'Excluir portador', message: holder.code, confirmLabel: 'Excluir', danger: true }))) return
     setError(null)
     try {
       await closingApi.deleteHolder(holder.id)

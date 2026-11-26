@@ -1796,6 +1796,23 @@ button.calendar-selected:hover {
   font-size: 1.45rem;
 }
 
+/* Confirmation and text windows (DialogProvider), instead of the browser's own. */
+.modal:has(.dialog) {
+  max-width: 440px;
+}
+
+.dialog {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.dialog-message {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
 @media (max-width: 760px) {
   .calendar-cell {
     min-height: 4.25rem;

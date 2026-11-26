@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
+import { DialogProvider } from './components/DialogProvider'
 import { Layout } from './components/Layout'
 import { Loading, WakingNotice } from './components/ui'
 import { CalendarPage } from './pages/CalendarPage'
@@ -61,40 +62,42 @@ function RequireInstallmentPlanManager() {
 export default function App() {
   return (
     <AuthProvider>
-      <WakingNotice />
-      <HashRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<RequireAuth />}>
-            <Route element={<Layout />}>
-              <Route index element={<CalendarPage />} />
-              <Route path="/slips" element={<SlipListPage />} />
-              <Route element={<RequireInstallmentPlanManager />}>
-                <Route path="/installment-plans" element={<InstallmentPlansPage />} />
+      <DialogProvider>
+        <WakingNotice />
+        <HashRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<RequireAuth />}>
+              <Route element={<Layout />}>
+                <Route index element={<CalendarPage />} />
+                <Route path="/slips" element={<SlipListPage />} />
+                <Route element={<RequireInstallmentPlanManager />}>
+                  <Route path="/installment-plans" element={<InstallmentPlansPage />} />
+                </Route>
+                <Route element={<RequireClosing />}>
+                  <Route path="/closing" element={<ClosingPage />} />
+                </Route>
+                <Route element={<RequireSlipEditor />}>
+                  <Route path="/slips/new" element={<SlipFormPage />} />
+                  <Route path="/slips/:id/edit" element={<SlipFormPage />} />
+                </Route>
+                <Route path="/slips/:id" element={<SlipDetailPage />} />
+                <Route path="/password" element={<PasswordPage />} />
+                <Route element={<RequireCompanyManager />}>
+                  <Route path="/companies" element={<CompaniesPage />} />
+                </Route>
+                <Route element={<RequireAdmin />}>
+                  <Route path="/slip-types" element={<SlipTypesPage />} />
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/deleted-slips" element={<DeletedSlipsPage />} />
+                  <Route path="/usage" element={<UsagePage />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
-              <Route element={<RequireClosing />}>
-                <Route path="/closing" element={<ClosingPage />} />
-              </Route>
-              <Route element={<RequireSlipEditor />}>
-                <Route path="/slips/new" element={<SlipFormPage />} />
-                <Route path="/slips/:id/edit" element={<SlipFormPage />} />
-              </Route>
-              <Route path="/slips/:id" element={<SlipDetailPage />} />
-              <Route path="/password" element={<PasswordPage />} />
-              <Route element={<RequireCompanyManager />}>
-                <Route path="/companies" element={<CompaniesPage />} />
-              </Route>
-              <Route element={<RequireAdmin />}>
-                <Route path="/slip-types" element={<SlipTypesPage />} />
-                <Route path="/users" element={<UsersPage />} />
-                <Route path="/deleted-slips" element={<DeletedSlipsPage />} />
-                <Route path="/usage" element={<UsagePage />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
-          </Route>
-        </Routes>
-      </HashRouter>
+          </Routes>
+        </HashRouter>
+      </DialogProvider>
     </AuthProvider>
   )
 }

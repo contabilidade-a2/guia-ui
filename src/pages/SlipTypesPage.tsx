@@ -6,15 +6,17 @@ import type { SlipType } from '../api/types'
 import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { ErrorBanner, Field, Loading, Modal } from '../components/ui'
 import { useLoad } from '../lib/useLoad'
+import { useDialogs } from '../components/dialogContext'
 
 export function SlipTypesPage() {
+  const dialogs = useDialogs()
   const slipTypes = useLoad(() => slipTypesApi.list(), [])
   /** `null` = closed, `'new'` = creating, otherwise the type being edited. */
   const [editing, setEditing] = useState<SlipType | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function remove(slipType: SlipType) {
-    if (!window.confirm(`Excluir o tipo de guia "${slipType.name}"?`)) return
+    if (!(await dialogs.confirm({ title: 'Excluir tipo de guia', message: slipType.name, confirmLabel: 'Excluir', danger: true }))) return
     setError(null)
     try {
       await slipTypesApi.remove(slipType.id)
