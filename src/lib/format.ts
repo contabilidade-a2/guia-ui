@@ -215,4 +215,5 @@ export const PHASE_TITLES: Record<number, string> = {
   1: 'Importações e confrontos',
   2: 'Conciliação',
   3: 'Encerramento mensal',
+  4: 'Tarefas anuais',
 }

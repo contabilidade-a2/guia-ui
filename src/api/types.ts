@@ -410,6 +410,9 @@ export interface ClosingTask {
   updatedBy: string | null
   updatedAt: string | null
   balances: BalanceSummary | null
+  /** Annual tasks only: the fiscal year they refer to, and the deadline (ECD and ECF), `yyyy-MM-dd`. */
+  fiscalYear: number | null
+  deadline: string | null
 }
 
 export interface TaskHistoryItem {
@@ -429,6 +432,9 @@ export interface TaskTemplate {
   kind: TaskKind
   appliesToAll: boolean
   companyIds: number[]
+  /** Annual tasks only: the month they show up in, and whether it is in the year after the fiscal year. */
+  annualMonth: number | null
+  nextYear: boolean
 }
 
 export interface MonthProgress {

@@ -35,6 +35,7 @@ import {
   TASK_STATUS_BADGES,
   TASK_STATUS_LABELS,
   formatCnpjRoot,
+  formatDate,
   formatDateTime,
   formatInstantDate,
   formatMoney,
@@ -752,6 +753,8 @@ function TaskLine({ task, onChange, onHistory, onOpenBalances }: TaskLineProps) 
   const done = task.status === 'DONE'
   const others = TASK_STATUS_ORDER.filter((status) => status !== task.status)
   const balances = task.balances
+  // An annual task past its deadline and still open (ECD and ECF).
+  const late = !!task.deadline && task.deadline < todayIso() && !done && task.status !== 'NOT_APPLICABLE'
 
   return (
     <tr className={`task-row${!task.applicable ? ' task-row-na' : ''}`}>
@@ -770,6 +773,17 @@ function TaskLine({ task, onChange, onHistory, onOpenBalances }: TaskLineProps) 
         <div className="task-name" title={task.description ?? undefined}>
           {task.name}
         </div>
+        {task.fiscalYear !== null && (
+          <div className="task-annual muted">
+            Exercício {task.fiscalYear}
+            {task.deadline && (
+              <>
+                {' · '}
+                <span className={late ? 'task-deadline-late' : undefined}>prazo {formatDate(task.deadline)}</span>
+              </>
+            )}
+          </div>
+        )}
         {balances && task.applicable && (
           <div className="task-balances">
             <span className="muted">
@@ -2000,7 +2014,8 @@ function CatalogSection() {
               <tr>
                 <th>Código</th>
                 <th>Tarefa</th>
-                <th>Fase</th>
+                <th>Etapa</th>
+                <th>Quando</th>
                 <th>Empresas</th>
                 <th aria-label="Ações" />
               </tr>
@@ -2010,7 +2025,12 @@ function CatalogSection() {
                 <tr key={template.id}>
                   <td className="closing-code">{template.code}</td>
                   <td>{template.name}</td>
-                  <td>{template.phase}</td>
+                  <td>{PHASE_TITLES[template.phase] ?? template.phase}</td>
+                  <td>
+                    {template.annualMonth === null
+                      ? 'Todo mês'
+                      : `Competência ${String(template.annualMonth).padStart(2, '0')}${template.nextYear ? ' do ano seguinte' : ''}`}
+                  </td>
                   <td>{template.appliesToAll ? 'Todas' : template.companyIds.map(companyName).join(', ')}</td>
                   <td className="row-actions">
                     <IconButton label={`Editar ${template.code}`} onClick={() => setEditing(template)}>

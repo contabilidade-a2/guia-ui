@@ -2535,6 +2535,17 @@ td.nowrap {
   color: var(--muted);
 }
 
+/* Annual tasks: the fiscal year and, for the ECD and the ECF, the deadline (red once it passed with the task open). */
+.task-annual {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.task-deadline-late {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .task-balances {
   display: flex;
   flex-wrap: wrap;
