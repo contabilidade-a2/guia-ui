@@ -4,7 +4,7 @@ import { DialogProvider } from './components/DialogProvider'
 import { Layout } from './components/Layout'
 import { Loading, WakingNotice } from './components/ui'
 import { CalendarPage } from './pages/CalendarPage'
-import { ClosingPage } from './pages/ClosingPage'
+import { ClosingOverviewPage, ClosingPage } from './pages/ClosingPage'
 import { CompaniesPage } from './pages/CompaniesPage'
 import { DeletedSlipsPage } from './pages/DeletedSlipsPage'
 import { InstallmentPlansPage } from './pages/InstallmentPlansPage'
@@ -76,6 +76,7 @@ export default function App() {
                 </Route>
                 <Route element={<RequireClosing />}>
                   <Route path="/closing" element={<ClosingPage />} />
+                  <Route path="/closing/overview" element={<ClosingOverviewPage />} />
                 </Route>
                 <Route element={<RequireSlipEditor />}>
                   <Route path="/slips/new" element={<SlipFormPage />} />

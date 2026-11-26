@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import { ApiError, errorMessage, fieldErrors } from '../api/client'
 import { closingApi } from '../api/endpoints'
@@ -43,19 +44,21 @@ import { normalize, onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 import { useDialogs } from '../components/dialogContext'
 
-type Tab = 'overview' | 'month' | 'balances' | 'holders' | 'companies' | 'catalog'
+type Tab = 'month' | 'balances' | 'holders' | 'companies' | 'catalog'
 
 /** Controle contábil, etapa 1: the monthly balance panel of the bank holders, and (administrator) its settings. */
 export function ClosingPage() {
   const { isAdmin } = useAuth()
-  const [tab, setTab] = useState<Tab>('overview')
+  // The overview (its own screen) opens a company's month here: /closing?company=1&competence=2026-10.
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<Tab>('month')
   const access = useLoad(() => closingApi.access(), [])
   const companies = useLoad(() => closingApi.activeCompanies(), [])
   // The month and company are shared by Fechamento and Saldos: opening the balances keeps the same period.
   // null until the first month is known; after that, whatever is typed (even incomplete) stays, so the field
   // doesn't jump back to the default month while a new one is being typed.
-  const [competence, setCompetence] = useState<string | null>(null)
-  const [companyId, setCompanyId] = useState<number | null>(null)
+  const [competence, setCompetence] = useState<string | null>(() => params.get('competence'))
+  const [companyId, setCompanyId] = useState<number | null>(() => Number(params.get('company')) || null)
   const firstCompetence = access.data?.firstCompetence ?? ''
   if (competence === null && access.data) setCompetence(defaultCompetence(firstCompetence))
   const period: Period | null =
@@ -81,15 +84,6 @@ export function ClosingPage() {
       </div>
       <ErrorBanner message={access.error ?? companies.error} onRetry={access.error ? access.reload : companies.reload} />
       {(access.loading || companies.loading) && !period && <Loading />}
-      {access.data && tab === 'overview' && (
-        <OverviewSection
-          onOpen={(company, month) => {
-            setCompanyId(company)
-            setCompetence(month)
-            setTab('month')
-          }}
-        />
-      )}
       {period && tab === 'month' && <MonthView period={period} onOpenBalances={() => setTab('balances')} />}
       {period && tab === 'balances' && <BalancePanel period={period} canImport={isAdmin} />}
       {access.data && tab === 'holders' && <HoldersSection />}
@@ -135,9 +129,6 @@ function SectionTabs({ tab, onChange, withRegisters }: { tab: Tab; onChange: (ta
 
   return (
     <div className="segmented segmented-strong section-tabs" role="group" aria-label="Seção" ref={ref}>
-      <button type="button" aria-pressed={tab === 'overview'} onClick={() => onChange('overview')}>
-        Acompanhamento
-      </button>
       <button type="button" aria-pressed={tab === 'month'} onClick={() => onChange('month')}>
         Fechamento
       </button>
@@ -228,6 +219,21 @@ function PeriodWarnings({ period }: { period: Period }) {
  * month (before the control: faded, counts as 100%; closed: lock; in progress: %; not started: grey). Opens on the
  * current fiscal year up to the previous month; a click on a month opens its Fechamento.
  */
+/** Acompanhamento, its own screen in the Contábil menu (asked by the user on 26/11/2026). */
+export function ClosingOverviewPage() {
+  const navigate = useNavigate()
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <h1>Acompanhamento</h1>
+        </div>
+      </div>
+      <OverviewSection onOpen={(company, month) => navigate(`/closing?company=${company}&competence=${month}`)} />
+    </>
+  )
+}
+
 function OverviewSection({ onOpen }: { onOpen: (companyId: number, competence: string) => void }) {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
