@@ -50,13 +50,16 @@ export function ClosingPage() {
   const access = useLoad(() => closingApi.access(), [])
   const companies = useLoad(() => closingApi.activeCompanies(), [])
   // The month and company are shared by Fechamento and Saldos: opening the balances keeps the same period.
-  const [competence, setCompetence] = useState('')
+  // null until the first month is known; after that, whatever is typed (even incomplete) stays, so the field
+  // doesn't jump back to the default month while a new one is being typed.
+  const [competence, setCompetence] = useState<string | null>(null)
   const [companyId, setCompanyId] = useState<number | null>(null)
   const firstCompetence = access.data?.firstCompetence ?? ''
+  if (competence === null && access.data) setCompetence(defaultCompetence(firstCompetence))
   const period: Period | null =
-    access.data && companies.data
+    access.data && companies.data && competence !== null
       ? {
-          competence: competence || defaultCompetence(firstCompetence),
+          competence,
           companyId: companyId ?? companies.data[0]?.id ?? null,
           companies: companies.data,
           firstCompetence,

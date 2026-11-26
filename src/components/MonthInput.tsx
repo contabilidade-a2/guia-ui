@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 
 interface MonthInputProps {
@@ -30,6 +30,8 @@ function toValue(text: string): string {
 /** Typed month and year (`MM/AAAA`); the slash is added automatically. */
 export function MonthInput({ value, onChange, required, label }: MonthInputProps) {
   const [text, setText] = useState(() => toText(value))
+  /** Set on focus, so the click that focused the field doesn't undo the selection. */
+  const justFocused = useRef(false)
   const [lastValue, setLastValue] = useState(value)
 
   // When the value changes from outside (e.g. "Limpar filtros"), show it.
@@ -62,6 +64,25 @@ export function MonthInput({ value, onChange, required, label }: MonthInputProps
       title="Mês e ano, no formato MM/AAAA"
       required={required}
       aria-label={label}
+      // Typing over the month (asked by the user on 26/11/2026): the whole month is selected when the field is
+      // entered, so new digits replace it without erasing first.
+      onFocus={(event) => {
+        justFocused.current = true
+        event.currentTarget.select()
+      }}
+      onMouseUp={(event) => {
+        if (justFocused.current) event.preventDefault()
+        justFocused.current = false
+      }}
+      // A full month and nothing selected: a digit starts a new month instead of being ignored.
+      onKeyDown={(event) => {
+        const input = event.currentTarget
+        if (!/^\d$/.test(event.key) || text.length < 7 || input.selectionStart !== input.selectionEnd) return
+        event.preventDefault()
+        setText(event.key)
+        setLastValue('')
+        onChange('')
+      }}
     />
   )
 }
