@@ -39,7 +39,7 @@ import {
 import { normalize, onlyDigits } from '../lib/text'
 import { useLoad } from '../lib/useLoad'
 
-type Tab = 'month' | 'balances' | 'holders' | 'companies' | 'catalog' | 'import'
+type Tab = 'month' | 'balances' | 'holders' | 'companies' | 'catalog'
 
 /** Controle contábil, etapa 1: the monthly balance panel of the bank holders, and (administrator) its settings. */
 export function ClosingPage() {
@@ -63,18 +63,6 @@ export function ClosingPage() {
         }
       : null
 
-  const tabs: { value: Tab; label: string }[] = [
-    { value: 'month', label: 'Fechamento' },
-    { value: 'balances', label: 'Saldos' },
-    ...(isAdmin
-      ? ([
-          { value: 'holders', label: 'Portadores' },
-          { value: 'companies', label: 'Empresas e acesso' },
-          { value: 'catalog', label: 'Tarefas' },
-          { value: 'import', label: 'Importar CSV' },
-        ] as { value: Tab; label: string }[])
-      : []),
-  ]
 
   return (
     <>
@@ -82,12 +70,12 @@ export function ClosingPage() {
         <div>
           <h1>Controle contábil</h1>
         </div>
-        <Segmented label="Seção" strong options={tabs} value={tab} onChange={setTab} />
+        <SectionTabs tab={tab} onChange={setTab} withRegisters={isAdmin} />
       </div>
       <ErrorBanner message={access.error ?? companies.error} onRetry={access.error ? access.reload : companies.reload} />
       {(access.loading || companies.loading) && !period && <Loading />}
       {period && tab === 'month' && <MonthView period={period} onOpenBalances={() => setTab('balances')} />}
-      {period && tab === 'balances' && <BalancePanel period={period} />}
+      {period && tab === 'balances' && <BalancePanel period={period} canImport={isAdmin} />}
       {access.data && tab === 'holders' && <HoldersSection />}
       {access.data && tab === 'companies' && (
         <CompaniesSection
@@ -97,8 +85,75 @@ export function ClosingPage() {
         />
       )}
       {access.data && tab === 'catalog' && <CatalogSection />}
-      {access.data && tab === 'import' && <ImportSection firstCompetence={access.data.firstCompetence} />}
     </>
+  )
+}
+
+const REGISTERS: { value: Tab; label: string }[] = [
+  { value: 'holders', label: 'Portadores' },
+  { value: 'companies', label: 'Empresas e acesso' },
+  { value: 'catalog', label: 'Tarefas' },
+]
+
+/**
+ * Fechamento and Saldos, the monthly work, side by side; the registers (administrator only) grouped under
+ * "Cadastros", like the groups of the main menu (layout chosen by the user on 26/11/2026).
+ */
+function SectionTabs({ tab, onChange, withRegisters }: { tab: Tab; onChange: (tab: Tab) => void; withRegisters: boolean }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+  const register = REGISTERS.find((item) => item.value === tab)
+
+  return (
+    <div className="segmented segmented-strong section-tabs" role="group" aria-label="Seção" ref={ref}>
+      <button type="button" aria-pressed={tab === 'month'} onClick={() => onChange('month')}>
+        Fechamento
+      </button>
+      <button type="button" aria-pressed={tab === 'balances'} onClick={() => onChange('balances')}>
+        Saldos
+      </button>
+      {withRegisters && (
+        <span className="section-tabs-group">
+          <button type="button" aria-pressed={!!register} aria-expanded={open} onClick={() => setOpen(!open)}>
+            {register ? `Cadastros: ${register.label}` : 'Cadastros'}
+            <span className="section-tabs-caret" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+          {open && (
+            <span className="task-menu section-tabs-menu" role="menu">
+              {REGISTERS.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  role="menuitem"
+                  className={item.value === tab ? 'current' : undefined}
+                  onClick={() => {
+                    setOpen(false)
+                    onChange(item.value)
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </span>
+          )}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -1006,7 +1061,8 @@ function StatusCounts({ rows }: { rows: HolderBalance[] }) {
 }
 
 /** The balances of the bank holders (the balance task), in their own tab, for the month and company chosen on screen. */
-function BalancePanel({ period }: { period: Period }) {
+function BalancePanel({ period, canImport }: { period: Period; canImport: boolean }) {
+  const [importing, setImporting] = useState(false)
   const { competence } = period
   const companyId = period.companyId ?? 0
   const valid = validPeriod(period) && period.companyId !== null
@@ -1073,7 +1129,7 @@ function BalancePanel({ period }: { period: Period }) {
 
   return (
     <>
-      <div className="card filters filters-closing">
+      <div className={`card filters filters-closing${canImport ? ' filters-closing-import' : ''}`}>
         <PeriodFields period={period} />
         <Field label="Status">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
@@ -1087,6 +1143,11 @@ function BalancePanel({ period }: { period: Period }) {
           </select>
         </Field>
         <AdvancedToggle open={advancedOpen} inUse={advancedChips.length > 0} onToggle={() => setAdvancedOpen(!advancedOpen)} />
+        {canImport && (
+          <button type="button" className="button closing-import-button" onClick={() => setImporting(true)}>
+            Importar CSV
+          </button>
+        )}
         <FilterRow
           chips={advancedChips}
           showChips={!advancedOpen}
@@ -1145,6 +1206,15 @@ function BalancePanel({ period }: { period: Period }) {
           />
         )
       })}
+      {importing && (
+        <Modal title="Importar CSV" onClose={() => setImporting(false)}>
+          <ImportSection
+            firstCompetence={period.firstCompetence}
+            initialCompetence={period.competence}
+            onImported={balances.reload}
+          />
+        </Modal>
+      )}
     </>
   )
 }
@@ -1329,11 +1399,6 @@ function HoldersSection() {
 
   return (
     <>
-      <div className="closing-section-header">
-        <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
-          Novo portador
-        </button>
-      </div>
       <ErrorBanner message={error ?? holders.error ?? companies.error} onRetry={holders.error ? holders.reload : undefined} />
       {holders.loading && !holders.data && <Loading />}
       {holders.data && (
@@ -1352,6 +1417,9 @@ function HoldersSection() {
             />
           </Field>
           <AdvancedToggle open={advancedOpen} inUse={advancedChips.length > 0} onToggle={() => setAdvancedOpen(!advancedOpen)} />
+          <button type="button" className="button button-primary closing-import-button" onClick={() => setEditing('new')}>
+            Novo portador
+          </button>
           <FilterRow
             chips={advancedChips}
             showChips={!advancedOpen}
@@ -1819,8 +1887,16 @@ function TemplateCompaniesForm({ template, companies, onClose, onSaved }: Templa
 
 // ---------- CSV import (administrator) ----------
 
-function ImportSection({ firstCompetence }: { firstCompetence: string }) {
-  const [competence, setCompetence] = useState(() => defaultCompetence(firstCompetence))
+interface ImportSectionProps {
+  firstCompetence: string
+  /** The month on screen, suggested for the file. */
+  initialCompetence: string
+  /** Reloads the balances on screen after a successful import. */
+  onImported: () => void
+}
+
+function ImportSection({ firstCompetence, initialCompetence, onImported }: ImportSectionProps) {
+  const [competence, setCompetence] = useState(() => initialCompetence || defaultCompetence(firstCompetence))
   const [csv, setCsv] = useState('')
   const [fileName, setFileName] = useState('')
   const [report, setReport] = useState<ImportReport | null>(null)
@@ -1834,6 +1910,7 @@ function ImportSection({ firstCompetence }: { firstCompetence: string }) {
     setReport(null)
     try {
       setReport(await closingApi.importCsv(competence, csv))
+      onImported()
     } catch (caught) {
       setError(errorMessage(caught))
     } finally {

@@ -2206,7 +2206,7 @@ td.nowrap {
 }
 
 .filters-holders {
-  grid-template-columns: minmax(0, 1.4fr) auto auto;
+  grid-template-columns: minmax(0, 1.4fr) auto auto auto;
 }
 
 /* Controle contábil: Portador, Banco and Conta (or just Banco and Conta) under "Filtros avançados" */
@@ -2669,4 +2669,46 @@ td.nowrap {
 
 .filters-balances .filters-toggle {
   justify-self: start;
+}
+
+/* Controle contábil: Fechamento · Saldos · Cadastros ▾ */
+.section-tabs-group {
+  position: relative;
+  display: flex;
+}
+
+.section-tabs-group > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.section-tabs-caret {
+  font-size: 0.75rem;
+}
+
+.section-tabs-menu button.current {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.filters-closing-import {
+  grid-template-columns: 8rem minmax(0, 1.4fr) minmax(0, 1fr) auto auto;
+}
+
+.closing-import-button {
+  align-self: end;
+  min-height: 2.75rem;
+  white-space: nowrap;
+}
+
+/* the import inside its dialog: no card around the form, and a wider dialog */
+.modal:has(.closing-import) {
+  max-width: 56rem;
+  width: calc(100% - 2rem);
+}
+
+.modal .closing-import .card {
+  border: 0;
+  padding: 0;
 }
