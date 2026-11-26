@@ -2247,6 +2247,41 @@ td.nowrap {
   grid-template-columns: repeat(3, minmax(0, 14rem));
 }
 
+/* Cadastros: Tarefas (etapa 4): Etapa, Status and "Nova tarefa" on one line. */
+.filters-catalog {
+  grid-template-columns: minmax(0, 16rem) auto 1fr auto;
+}
+
+.filters-catalog .segmented button {
+  padding: 0 0.7rem;
+  font-size: 0.88rem;
+}
+
+.filters-catalog .closing-import-button {
+  grid-column: 4;
+}
+
+.catalog-phase td {
+  padding-top: 1.1rem !important;
+  font-weight: 700;
+  background: var(--surface-muted);
+}
+
+.catalog-table td.row-actions {
+  white-space: nowrap;
+}
+
+/* A deactivated task stays in the list, faded. */
+.row-inactive td:not(.row-actions) {
+  color: var(--muted);
+}
+
+.form-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
 .filters-holders .segmented button {
   padding: 0 0.7rem;
   font-size: 0.88rem;

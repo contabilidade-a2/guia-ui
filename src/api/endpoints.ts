@@ -10,6 +10,7 @@ import type {
   TaskHistoryItem,
   TaskStatus,
   TaskTemplate,
+  TaskTemplateInput,
   BankHolderInput,
   CalendarDay,
   ClosingAccess,
@@ -201,6 +202,12 @@ export const closingApi = {
       `/api/closing/tasks/${templateId}/history?companyId=${companyId}&competence=${competence}`,
     ),
   taskTemplates: () => request<TaskTemplate[]>('GET', '/api/closing/task-templates'),
+  createTaskTemplate: (input: TaskTemplateInput) => request<TaskTemplate>('POST', '/api/closing/task-templates', input),
+  updateTaskTemplate: (id: number, input: TaskTemplateInput) =>
+    request<TaskTemplate>('PUT', `/api/closing/task-templates/${id}`, input),
+  deleteTaskTemplate: (id: number) => request<void>('DELETE', `/api/closing/task-templates/${id}`),
+  moveTaskTemplate: (id: number, up: boolean) =>
+    request<TaskTemplate[]>('POST', `/api/closing/task-templates/${id}/move`, { up }),
   setTaskCompanies: (id: number, appliesToAll: boolean, companyIds: number[]) =>
     request<TaskTemplate>('PUT', `/api/closing/task-templates/${id}/companies`, { appliesToAll, companyIds }),
   setPhaseDependency: (mode: PhaseDependency) => request<void>('PUT', '/api/closing/phase-dependency', { mode }),

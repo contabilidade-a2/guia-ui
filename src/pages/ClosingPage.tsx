@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import { ApiError, errorMessage, fieldErrors } from '../api/client'
@@ -23,7 +23,7 @@ import type {
 } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { CheckboxList } from '../components/CheckboxList'
-import { DeleteIcon, EditIcon, IconButton } from '../components/icons'
+import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon, IconButton } from '../components/icons'
 import { MonthInput } from '../components/MonthInput'
 import { SignedMoneyInput } from '../components/SignedMoneyInput'
 import { ErrorBanner, Field, Loading, Modal, Segmented, SortableHeader } from '../components/ui'
@@ -39,6 +39,8 @@ import {
   formatDateTime,
   formatInstantDate,
   formatMoney,
+  formatMonth,
+  MONTH_NAMES,
   todayIso,
 } from '../lib/format'
 import { normalize, onlyDigits } from '../lib/text'
@@ -95,7 +97,7 @@ export function ClosingPage() {
           onAccessChanged={access.reload}
         />
       )}
-      {access.data && tab === 'catalog' && <CatalogSection />}
+      {access.data && tab === 'catalog' && <CatalogSection firstCompetence={access.data.firstCompetence} />}
     </>
   )
 }
@@ -1994,59 +1996,156 @@ function ClosingCompanyForm({ option, onClose, onSaved }: { option: ClosingCompa
   )
 }
 
-// ---------- task catalog: which companies do each task (administrator) ----------
+// ---------- task catalog (administrator): the tasks, their phase, months, order and companies (etapa 4) ----------
 
-function CatalogSection() {
+function CatalogSection({ firstCompetence }: { firstCompetence: string }) {
   const templates = useLoad(() => closingApi.taskTemplates(), [])
   const companies = useLoad(() => closingApi.companyOptions(), [])
-  const [editing, setEditing] = useState<TaskTemplate | null>(null)
+  const dialogs = useDialogs()
+  const [editing, setEditing] = useState<TaskTemplate | 'new' | null>(null)
+  const [phaseFilter, setPhaseFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const closingCompanies = (companies.data ?? []).filter((option) => option.id !== null) as (ClosingCompanyOption & { id: number })[]
   const companyName = (id: number) => closingCompanies.find((company) => company.id === id)?.name ?? `#${id}`
+  const current = todayIso().slice(0, 7)
+  const isActive = (template: TaskTemplate) => template.validUntil === null || template.validUntil >= current
+  const all = templates.data ?? []
+  const shown = all.filter(
+    (template) =>
+      (!phaseFilter || template.phase === Number(phaseFilter)) &&
+      (!statusFilter || (statusFilter === 'active') === isActive(template)),
+  )
+
+  async function move(template: TaskTemplate, up: boolean) {
+    setError(null)
+    try {
+      await closingApi.moveTaskTemplate(template.id, up)
+      templates.reload()
+    } catch (caught) {
+      setError(errorMessage(caught))
+    }
+  }
+
+  async function remove(template: TaskTemplate) {
+    if (!(await dialogs.confirm({ title: 'Excluir tarefa', message: template.name, confirmLabel: 'Excluir', danger: true }))) return
+    setError(null)
+    try {
+      await closingApi.deleteTaskTemplate(template.id)
+      templates.reload()
+    } catch (caught) {
+      setError(errorMessage(caught))
+    }
+  }
 
   return (
     <>
-      <ErrorBanner message={templates.error ?? companies.error} onRetry={templates.error ? templates.reload : undefined} />
+      <ErrorBanner message={error ?? templates.error ?? companies.error} onRetry={templates.error ? templates.reload : undefined} />
       {templates.loading && !templates.data && <Loading />}
       {templates.data && (
-        <div className="card table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Tarefa</th>
-                <th>Etapa</th>
-                <th>Quando</th>
-                <th>Empresas</th>
-                <th aria-label="Ações" />
-              </tr>
-            </thead>
-            <tbody>
-              {templates.data.map((template) => (
-                <tr key={template.id}>
-                  <td className="closing-code">{template.code}</td>
-                  <td>{template.name}</td>
-                  <td>{PHASE_TITLES[template.phase] ?? template.phase}</td>
-                  <td>
-                    {template.annualMonth === null
-                      ? 'Todo mês'
-                      : `Competência ${String(template.annualMonth).padStart(2, '0')}${template.nextYear ? ' do ano seguinte' : ''}`}
-                  </td>
-                  <td>{template.appliesToAll ? 'Todas' : template.companyIds.map(companyName).join(', ')}</td>
-                  <td className="row-actions">
-                    <IconButton label={`Editar ${template.code}`} onClick={() => setEditing(template)}>
-                      <EditIcon />
-                    </IconButton>
-                  </td>
+        <>
+          <div className="card filters filters-catalog">
+            <Field label="Etapa">
+              <select value={phaseFilter} onChange={(e) => setPhaseFilter(e.target.value)}>
+                <option value="">Todas</option>
+                {Object.entries(PHASE_TITLES).map(([phase, title]) => (
+                  <option key={phase} value={phase}>
+                    {title}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Status" group>
+              <Segmented
+                label="Status"
+                options={[
+                  { value: '', label: 'Todas' },
+                  { value: 'active', label: 'Ativas' },
+                  { value: 'inactive', label: 'Inativas' },
+                ]}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+            </Field>
+            <button type="button" className="button button-primary closing-import-button" onClick={() => setEditing('new')}>
+              Nova tarefa
+            </button>
+          </div>
+          <div className="card table-wrapper">
+            <table className="catalog-table">
+              <thead>
+                <tr>
+                  <th>Tarefa</th>
+                  <th>Quando</th>
+                  <th>Empresas</th>
+                  <th>Vale</th>
+                  <th>Status</th>
+                  <th aria-label="Ações" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {shown.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="muted">
+                      Nenhuma tarefa encontrada.
+                    </td>
+                  </tr>
+                )}
+                {shown.map((template, index) => {
+                  const samePhase = all.filter((item) => item.phase === template.phase)
+                  const position = samePhase.indexOf(template)
+                  const active = isActive(template)
+                  // One title row per phase, like the stages of Fechamento.
+                  const newPhase = index === 0 || shown[index - 1].phase !== template.phase
+                  return (
+                    <Fragment key={template.id}>
+                      {newPhase && (
+                        <tr className="catalog-phase">
+                          <td colSpan={6}>{PHASE_TITLES[template.phase] ?? `Etapa ${template.phase}`}</td>
+                        </tr>
+                      )}
+                      <tr className={active ? undefined : 'row-inactive'}>
+                        <td title={template.description ?? undefined}>{template.name}</td>
+                        <td>{whenLabel(template)}</td>
+                        <td>{template.appliesToAll ? 'Todas' : template.companyIds.map(companyName).join(', ')}</td>
+                        <td>{validityLabel(template)}</td>
+                        <td>
+                          <span className={`badge ${active ? 'badge-paid' : 'badge-archived'}`}>{active ? 'Ativa' : 'Inativa'}</span>
+                        </td>
+                        <td className="row-actions">
+                          <IconButton label={`Subir ${template.name}`} onClick={() => move(template, true)} disabled={position <= 0}>
+                            <ArrowUpIcon />
+                          </IconButton>
+                          <IconButton
+                            label={`Descer ${template.name}`}
+                            onClick={() => move(template, false)}
+                            disabled={position === samePhase.length - 1}
+                          >
+                            <ArrowDownIcon />
+                          </IconButton>
+                          <IconButton label={`Editar ${template.name}`} onClick={() => setEditing(template)}>
+                            <EditIcon />
+                          </IconButton>
+                          {template.kind !== 'CALCULATED' && (
+                            <IconButton label={`Excluir ${template.name}`} onClick={() => remove(template)} danger>
+                              <DeleteIcon />
+                            </IconButton>
+                          )}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       {editing && (
-        <TemplateCompaniesForm
-          template={editing}
+        <TemplateForm
+          template={editing === 'new' ? null : editing}
           companies={closingCompanies}
+          defaultFrom={defaultCompetence(firstCompetence)}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null)
@@ -2058,37 +2157,137 @@ function CatalogSection() {
   )
 }
 
-interface TemplateCompaniesFormProps {
-  template: TaskTemplate
+function whenLabel(template: TaskTemplate): string {
+  if (template.annualMonth === null) return 'Todo mês'
+  const month = `Competência ${String(template.annualMonth).padStart(2, '0')}${template.nextYear ? ' do ano seguinte' : ''}`
+  return template.lastBusinessDayDeadline ? `${month} · prazo no último dia útil` : month
+}
+
+function validityLabel(template: TaskTemplate): string {
+  const { validFrom: from, validUntil: until } = template
+  if (from && until) return `${formatMonth(from)} a ${formatMonth(until)}`
+  if (from) return `Desde ${formatMonth(from)}`
+  if (until) return `Até ${formatMonth(until)}`
+  return 'Sempre'
+}
+
+interface TemplateFormProps {
+  template: TaskTemplate | null
   companies: { id: number; name: string | null }[]
+  /** The first month a new task counts in: the month the closing screen opens on. */
+  defaultFrom: string
   onClose: () => void
   onSaved: () => void
 }
 
-function TemplateCompaniesForm({ template, companies, onClose, onSaved }: TemplateCompaniesFormProps) {
-  const [all, setAll] = useState(template.appliesToAll)
-  const [selected, setSelected] = useState(template.companyIds.map(String))
+/**
+ * A task of the catalog (etapa 4): name, description, phase and when it shows up, the months it counts in and the
+ * companies it applies to. Ending its validity deactivates it without touching the months already done.
+ */
+function TemplateForm({ template, companies, defaultFrom, onClose, onSaved }: TemplateFormProps) {
+  const calculated = template?.kind === 'CALCULATED'
+  const [form, setForm] = useState({
+    name: template?.name ?? '',
+    description: template?.description ?? '',
+    phase: String(template?.phase ?? 1),
+    annualMonth: String(template?.annualMonth ?? 12),
+    nextYear: template?.nextYear ?? false,
+    lastBusinessDayDeadline: template?.lastBusinessDayDeadline ?? false,
+    validFrom: template ? (template.validFrom ?? '') : defaultFrom,
+    validUntil: template?.validUntil ?? '',
+  })
+  const [all, setAll] = useState(template?.appliesToAll ?? true)
+  const [selected, setSelected] = useState((template?.companyIds ?? []).map(String))
   const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
+  const annual = form.phase === '4'
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setSaving(true)
     setError(null)
+    setErrors({})
+    const input = {
+      name: form.name,
+      description: form.description.trim() || null,
+      phase: Number(form.phase),
+      annualMonth: annual ? Number(form.annualMonth) : null,
+      nextYear: annual && form.nextYear,
+      lastBusinessDayDeadline: annual && form.lastBusinessDayDeadline,
+      validFrom: form.validFrom || null,
+      validUntil: form.validUntil || null,
+    }
     try {
-      await closingApi.setTaskCompanies(template.id, all, all ? [] : selected.map(Number))
+      const saved = template ? await closingApi.updateTaskTemplate(template.id, input) : await closingApi.createTaskTemplate(input)
+      await closingApi.setTaskCompanies(saved.id, all, all ? [] : selected.map(Number))
       onSaved()
     } catch (caught) {
       setError(errorMessage(caught))
+      setErrors(fieldErrors(caught))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal title={`${template.code} ${template.name}`} onClose={onClose}>
+    <Modal title={template ? 'Editar tarefa' : 'Nova tarefa'} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <ErrorBanner message={error} />
+        <Field label="Nome" error={errors.name}>
+          <input required maxLength={200} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </Field>
+        <Field label="Descrição" error={errors.description}>
+          <textarea rows={2} maxLength={500} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        </Field>
+        <div className="form-row">
+          <Field label="Etapa" error={errors.phase}>
+            <select value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value })}>
+              {Object.entries(PHASE_TITLES)
+                .filter(([phase]) => !calculated || phase !== '4')
+                .map(([phase, title]) => (
+                  <option key={phase} value={phase}>
+                    {title}
+                  </option>
+                ))}
+            </select>
+          </Field>
+          {annual && (
+            <Field label="Competência">
+              <select value={form.annualMonth} onChange={(e) => setForm({ ...form, annualMonth: e.target.value })}>
+                {MONTH_NAMES.map((name, index) => (
+                  <option key={name} value={index + 1}>
+                    {String(index + 1).padStart(2, '0')} – {name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+        </div>
+        {annual && (
+          <div className="form-checks">
+            <label className="checkbox">
+              <input type="checkbox" checked={form.nextYear} onChange={(e) => setForm({ ...form, nextYear: e.target.checked })} />
+              No ano seguinte ao exercício
+            </label>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={form.lastBusinessDayDeadline}
+                onChange={(e) => setForm({ ...form, lastBusinessDayDeadline: e.target.checked })}
+              />
+              Prazo no último dia útil do mês
+            </label>
+          </div>
+        )}
+        <div className="form-row">
+          <Field label="Vale a partir de">
+            <MonthInput value={form.validFrom} onChange={(validFrom) => setForm({ ...form, validFrom })} />
+          </Field>
+          <Field label="Vale até">
+            <MonthInput value={form.validUntil} onChange={(validUntil) => setForm({ ...form, validUntil })} />
+          </Field>
+        </div>
         <label className="checkbox">
           <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
           Todas as empresas

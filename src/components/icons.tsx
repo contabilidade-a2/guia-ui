@@ -71,6 +71,22 @@ export function PlusIcon() {
   )
 }
 
+export function ArrowUpIcon() {
+  return (
+    <Icon>
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </Icon>
+  )
+}
+
+export function ArrowDownIcon() {
+  return (
+    <Icon>
+      <path d="M12 5v14M6 13l6 6 6-6" />
+    </Icon>
+  )
+}
+
 export function ChevronLeftIcon() {
   return (
     <Icon>

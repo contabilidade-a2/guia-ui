@@ -429,12 +429,30 @@ export interface TaskTemplate {
   code: string
   phase: number
   name: string
+  description: string | null
+  sortOrder: number
   kind: TaskKind
   appliesToAll: boolean
   companyIds: number[]
   /** Annual tasks only: the month they show up in, and whether it is in the year after the fiscal year. */
   annualMonth: number | null
   nextYear: boolean
+  lastBusinessDayDeadline: boolean
+  /** The competences the task counts in, `yyyy-MM`; null = no limit. */
+  validFrom: string | null
+  validUntil: string | null
+}
+
+/** What the administrator fills in for a task of the catalog (etapa 4). */
+export interface TaskTemplateInput {
+  name: string
+  description: string | null
+  phase: number
+  annualMonth: number | null
+  nextYear: boolean
+  lastBusinessDayDeadline: boolean
+  validFrom: string | null
+  validUntil: string | null
 }
 
 export interface MonthProgress {
